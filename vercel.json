@@ -1,12 +1,23 @@
 {
+  "version": 2,
   "functions": {
-    "api/bot.ts": {
+    "api/vercel-bot.ts": {
       "memory": 1024,
       "maxDuration": 10
     },
-	"api/utils/server.ts": {
-	  "memory": 128,
-	  "maxDuration": 10
-	}
-  }
+    "api/utils/server.ts": {
+      "memory": 128,
+      "maxDuration": 10
+    }
+  },
+  "routes": [
+      {
+          "src": "/",
+          "dest": "api/vercel-bot.ts"
+      },
+      {
+          "src": "/google/callback",
+          "dest": "api/utils/server.ts"
+      }
+  ]
 }
