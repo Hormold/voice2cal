@@ -35,11 +35,11 @@ export const getCalendarMenu = async (ctx: any) => {
   const user = new User(ctx.from!);
   const userSettings = await user.get();
   if(!userSettings.googleAccessToken) {
-    return ctx.reply("You are not logged in, please send /login");
+    return [];
   }
   const calendars = await getAllCalendars(userSettings.googleAccessToken!);
   if(!calendars) {
-    return ctx.reply("No calendars found");
+    return [];
   }
 
   const buttonsForCallback = calendars.map((calendar: any) => {

@@ -15,7 +15,7 @@ const SCOPES = [
 const oauth2Client = new google.auth.OAuth2(
 	process.env.GOOGLE_CLIENT_ID,
 	process.env.GOOGLE_CLIENT_SECRET,
-	"https://tg-bot-v2c.vercel.app/google/callback",
+	process.env.WEBHOOK_URL || "http://localhost:3000/google/callback",
 	
 );
 

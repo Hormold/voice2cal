@@ -51,3 +51,16 @@ export type GoogleUserinfo = {
 		*/
 	verified_email?: boolean | null;
 }
+
+type GeoFeature = {
+	properties: {
+		city: string;
+		country_code: string;
+		state: string;
+		timezone: { name: string };
+	}
+}
+
+export type GeoData = {
+	features: GeoFeature[];
+}

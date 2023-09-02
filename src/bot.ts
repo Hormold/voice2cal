@@ -8,34 +8,50 @@ import getOpenAiClient from "./utils/openai.js";
 import User from "./utils/user-manager.js";
 import { googleLogin } from "./utils/google.js";
 import { getCalendarMenu, getModeMenu } from "./utils/functions.js";
+import { GeoData } from "./types.js";
 
 if(!process.env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not set");
 const bot = new Bot(process.env.BOT_TOKEN!);
 
+const commands = {
+  login: "👤 Login to Google Account",
+  calendars: "📅 Select calendar",
+  reset: "🔧 Reset Google Account",
+  mode: "🔧 Select mode (GPT-3.5 or GPT-4)",
+};
+
 bot.command(["help", "start"], async (ctx) => {
   const user = new User(ctx.from!);
   const userSettings = await user.get();
+  let personalData = [] as string[];
 
-  if(!userSettings.googleAccessToken) {
-      
-    ctx.reply(
-      `This bot can help you to manage your calendar using text/voice messages
-
-  /calendars - select calendar
-  /help - show this message
-  /login - login to your Google Account (required to manage calendar)`
-    );
-  } else {
-    ctx.reply(
-      `This bot can help you to manage your calendar using text/voice messages
-Linked Google Acccount: ${userSettings.googleUserInfo?.name} (${userSettings.googleUserInfo?.id})
-Linked Calendar: ${userSettings.calendarName}
-Geo location: ${userSettings.cityName}, ${userSettings.countyName}
-
-/calendars - select calendar
-/reset - reset linked Google Account
-/mode - select parser mode`);
+  if(userSettings.googleAccessToken) {
+    personalData = [
+      `👤 Logged in as ${userSettings.googleUserInfo?.name} (${userSettings.googleUserInfo?.email})`,
+      `📅 Calendar: ${userSettings.calendarName}`,
+      `📍 Location: ${userSettings.cityName}, ${userSettings.countyName}`,
+      `⏰ Timezone: ${userSettings.timeZone}`,
+      `🔧 Mode: ${userSettings.modeId === 1 ? "Fast" : "Slow"}`,
+      ]
+    if(userSettings.accessGranted) {
+      personalData.push(`✅ Access granted`);
+    } else {
+      personalData.push(`❌ Access to bot not granted, contact @define to get access`);
+    }
   }
+
+  const header = `[Developer Preview] This bot can help you to manage your calendar using text/voice messages`
+  const commandstr = Object.entries(commands).map(([command, description]) => `/${command} - ${description}`).join("\n");
+
+  ctx.reply(`${header}\n${personalData.join("\n")}\n\n${commandstr}`);
+});
+
+bot.command('sure', async (ctx) => {
+  const user = new User(ctx.from!);
+  await user.set({
+    accessGranted: true,
+  });
+  await ctx.reply(`Access granted, please use /help to see available commands`);
 });
 
 bot.command('reset', async (ctx) => {
@@ -65,6 +81,9 @@ bot.command('mode', async (ctx) => {
 
 bot.command('calendars', async (ctx) => {
   const buttonsForCallback = await getCalendarMenu(ctx);
+  if(!buttonsForCallback.length) {
+    return ctx.reply(`Please login to your Google Account first -> /login`);
+  }
   await ctx.reply(`Please select calendar`, {
       reply_markup: {
         inline_keyboard: buttonsForCallback,
@@ -134,7 +153,6 @@ bot.callbackQuery(/calendar:(.+)/, async (ctx) => {
 });
 
 bot.command("login", async (ctx) => {
-  const user = new User(ctx.from!);
   const authUrl = await googleLogin(ctx.from!.id);
   await ctx.reply(`Please login to your Google Account, if you want to manage your calendar (If you want to change account, please use /reset before)`, {
     reply_markup: {
@@ -157,7 +175,8 @@ bot.on('message:location', async (ctx) => {
     const { latitude, longitude } = ctx.message.location!;
     // Convert location to city name, timezone
     const result = await fetch(`https://api.geoapify.com/v1/geocode/reverse?lat=${latitude}&lon=${longitude}&apiKey=${process.env.GEOAPIFY_API_KEY}`);
-    const data = (await result.json()).features[0].properties;
+    const geoData = (await result.json()) as GeoData;
+    const data = geoData.features[0].properties;
     const { city, country_code, state, timezone: {name: timeZone} } = data;
     await user.set({
       cityName: city,
@@ -175,15 +194,18 @@ bot.on('message:location', async (ctx) => {
 });
 
 bot.on(['message:text', 'message:voice'], async (ctx) => {
-  console.log(`Incoming message:`, ctx.message);
   const user = new User(ctx.from!);
   const userSettings = await user.get();
   if(!userSettings.timeZone) {
-    return ctx.reply("Please send your location first to set timezone");
+    return ctx.reply("Oops! Please send your location first to set timezone, it really matters for calendar events");
   }
 
   if(!userSettings.googleAccessToken) {
     return ctx.reply("Please login to your Google Account first -> /login");
+  }
+
+  if(!userSettings.accessGranted) {
+    return ctx.reply("Access to bot not granted, contact @define to get access. This is a developer preview, so access is limited.");
   }
 
   let messageText = ctx.message.text;

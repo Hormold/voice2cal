@@ -16,6 +16,7 @@ type settings = {
 	calendarName?: string | null,
 	googleUserInfo?: GoogleUserinfo | null,
 	modeId?: number | null,
+	accessGranted?: boolean | null,
 }
 
 class User {
@@ -34,6 +35,7 @@ class User {
 		calendarName: 'Primary',
 		googleUserInfo: {},
 		modeId: 1,
+		accessGranted: false,
 	} as settings;
 
 	constructor(user: TelegramUser | { id: number }) {

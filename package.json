@@ -2,7 +2,7 @@
   "name": "voice-to-calendar",
   "version": "1.0.0",
   "description": "",
-  "main": "dev.js",
+  "main": "dist/index.js",
   "type": "module",
   "lint-staged": {
     "*.ts": "xo"
@@ -13,10 +13,12 @@
   },
   "prettier": "@onmoon/prettier-config",
   "scripts": {
-    "build": "tsc && cp package*.json build",
+    "build": "tsc && cp package*.json dist",
     "start": "env-cmd nodemon -d 0.5 -w .env -w api -x 'ts-node --transpile-only --esm' api/dev.ts",
     "lint": "xo",
-    "lint:fix": "xo --fix"
+    "lint:fix": "xo --fix",
+    "webhook": "env-cmd sh ./setwebhook.sh",
+    "gtest": "env-cmd  npx @google-cloud/functions-framework --target=handleTelegramWebhook"
   },
   "author": "",
   "license": "ISC",
