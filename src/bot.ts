@@ -43,7 +43,7 @@ bot.command(["help", "start"], async (ctx) => {
   const header = `[Developer Preview] This bot can help you to manage your calendar using text/voice messages`
   const commandstr = Object.entries(commands).map(([command, description]) => `/${command} - ${description}`).join("\n");
 
-  ctx.reply(`${header}\n${personalData.join("\n")}\n\n${commandstr}`);
+  ctx.reply(`${header}\n\n${personalData.join("\n")}\n\n${commandstr}`);
 });
 
 bot.command('sure', async (ctx) => {
@@ -132,7 +132,7 @@ bot.callbackQuery(/calendar:(.+)/, async (ctx) => {
   const user = new User(ctx.from!);
   const calendarId = ctx.match![1] as string;
   const userSettings = await user.get();
-  const calendars = await getAllCalendars(userSettings.googleAccessToken!);
+  const calendars = await getAllCalendars(userSettings.googleAccessToken!, userSettings.googleRefreshToken!);
 
   if(!calendars) {
     return;

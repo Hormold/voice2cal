@@ -1,3 +1,22 @@
+import { oauth2_v2 } from "googleapis/build/src/apis/oauth2/v2";
+import { User as TelegramUser } from 'grammy/types'
+
+export type UserSettings = {
+	googleAccessToken?: string,
+	googleRefreshToken?: string,
+	googleCalendarId?: string | null,
+	countyName?: string | null,
+	cityName?: string | null,
+	timeZone?: string | null,
+	googleExpiresAt?: number | null,
+	calendarId?: string | null,
+	calendarName?: string | null,
+	googleUserInfo?: GoogleUserinfo | null,
+	modeId?: number | null,
+	accessGranted?: boolean | null,
+	tg?: TelegramUser | null,
+}
+
 export type runFormat = {
 	chatId: string;
 	userSettings: any;
@@ -5,52 +24,8 @@ export type runFormat = {
 	userLang: string;
 }
 
-export type GoogleUserinfo = {
-	/**
-		* The user's email address.
-		*/
-	email?: string | null;
-	/**
-		* The user's last name.
-		*/
-	family_name?: string | null;
-	/**
-		* The user's gender.
-		*/
-	gender?: string | null;
-	/**
-		* The user's first name.
-		*/
-	given_name?: string | null;
-	/**
-		* The hosted domain e.g. example.com if the user is Google apps user.
-		*/
-	hd?: string | null;
-	/**
-		* The obfuscated ID of the user.
-		*/
-	id?: string | null;
-	/**
-		* URL of the profile page.
-		*/
-	link?: string | null;
-	/**
-		* The user's preferred locale.
-		*/
-	locale?: string | null;
-	/**
-		* The user's full name.
-		*/
-	name?: string | null;
-	/**
-		* URL of the user's picture image.
-		*/
-	picture?: string | null;
-	/**
-		* Boolean flag which is true if the email address is verified. Always verified because we only return the user's primary email address.
-		*/
-	verified_email?: boolean | null;
-}
+export type GoogleUserinfo = oauth2_v2.Schema$Userinfo;
+export type TelegramUserinfo = TelegramUser;
 
 type GeoFeature = {
 	properties: {

@@ -1,27 +1,13 @@
 
 import redis from "ioredis";
-import { User as TelegramUser } from 'grammy/types'
-import { GoogleUserinfo } from "../types.js";
+import { UserSettings, TelegramUserinfo } from "../types.js";
 const redisClient = new redis(process.env.KV_URL!);
 
-type settings = {
-	googleAccessToken?: string,
-	googleRefreshToken?: string,
-	googleCalendarId?: string | null,
-	countyName?: string | null,
-	cityName?: string | null,
-	timeZone?: string | null,
-	googleExpiresAt?: number | null,
-	calendarId?: string | null,
-	calendarName?: string | null,
-	googleUserInfo?: GoogleUserinfo | null,
-	modeId?: number | null,
-	accessGranted?: boolean | null,
-}
+
 
 class User {
 	id: number = 0;
-	user: TelegramUser = {} as TelegramUser;
+	user: TelegramUserinfo = {} as TelegramUserinfo;
 
 	defaultSettings = {
 		googleAccessToken: "",
@@ -36,9 +22,9 @@ class User {
 		googleUserInfo: {},
 		modeId: 1,
 		accessGranted: false,
-	} as settings;
+	} as UserSettings;
 
-	constructor(user: TelegramUser | { id: number }) {
+	constructor(user: TelegramUserinfo | { id: number }) {
 		this.id = user.id;
 		if('is_bot' in user)
 			this.user = user;
@@ -59,11 +45,12 @@ class User {
 		return JSON.parse(user) as typeof this.defaultSettings & { id: number };
 	}
 
-	async set(settings: settings) {
+	async set(settings: Partial<typeof this.defaultSettings>) {
 		const user = await this.get();
 		await redisClient.set(`user:${this.id}`, JSON.stringify({
 			...user,
 			...settings,
+			tg: this.user,
 		}));
 	}
 }

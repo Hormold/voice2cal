@@ -14,7 +14,7 @@
   "prettier": "@onmoon/prettier-config",
   "scripts": {
     "build": "tsc && cp package*.json dist",
-    "start": "env-cmd nodemon -d 0.5 -w .env -w api -x 'ts-node --transpile-only --esm' api/dev.ts",
+    "start": "env-cmd nodemon -d 0.5 -w .env -w src -x 'ts-node --transpile-only --esm' src/dev.ts",
     "lint": "xo",
     "lint:fix": "xo --fix",
     "webhook": "env-cmd sh ./setwebhook.sh",

@@ -37,9 +37,15 @@ export const getCalendarMenu = async (ctx: any) => {
   if(!userSettings.googleAccessToken) {
     return [];
   }
-  const calendars = await getAllCalendars(userSettings.googleAccessToken!);
+  const [calendars, accessToken] = await getAllCalendars(userSettings.googleAccessToken!, userSettings.googleRefreshToken!);
   if(!calendars) {
     return [];
+  }
+
+  if(accessToken !== userSettings.googleAccessToken) {
+    await user.set({
+      googleAccessToken: accessToken,
+    });
   }
 
   const buttonsForCallback = calendars.map((calendar: any) => {

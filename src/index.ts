@@ -33,7 +33,7 @@ app.get('/google/callback', async (req, res) => {
 			googleExpiresAt: accessToken.expiry_date,
 		});
 
-		res.redirect(`https://t.me/${process.env.BOT_NAME}?start=help`);
+		res.redirect(`https://t.me/${process.env.BOT_NAME}`);
 
 		bot.api.sendMessage(userId, `👋🏼 Successful! You are logged in as ${userInfo.name} (${userInfo.email})`);
 		bot.api.sendMessage(userId, `📍 Now, please send your location to set timezone & location.`);

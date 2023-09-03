@@ -30,6 +30,18 @@ export const getGoogleId = async (accessToken: string): Promise<GoogleUserinfo> 
 	return res.data;
 }
 
+const refreshAccessToken = async (refreshToken: string): Promise<string | null> => {
+	oauth2Client.setCredentials({ access_token: '', refresh_token: refreshToken });
+	return new Promise((resolve, reject) => {
+		oauth2Client.refreshAccessToken((err, tokens) => {
+			if(!tokens || err || !tokens.access_token) {
+				return reject(err);
+			}
+			resolve(tokens.access_token);
+		});
+	});
+};
+
 export const googleLogin = (userId: number): string => {
 	const authUrl = oauth2Client.generateAuthUrl({
 		access_type: 'offline',
@@ -46,41 +58,67 @@ export const getAccessToken = async (code: string) => {
 	return tokens;
 }
 
-export const getAllCalendars = async (accessToken: string) => {
-	oauth2Client.setCredentials({ access_token: accessToken });
-	const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
-	const res = await calendar.calendarList.list();
-	const calendars = res.data.items;
-	if (!calendars || calendars.length === 0) {
-		console.log('No calendars found.');
-		return;
+export const getAllCalendars = async (accessToken: string, refreshToken: string): Promise<any[]> => {
+	try {
+		oauth2Client.setCredentials({ access_token: accessToken });
+		const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+		const res = await calendar.calendarList.list();
+		const calendars = res.data.items;
+		if (!calendars || calendars.length === 0) {
+			console.log('No calendars found.');
+			return [[], accessToken];
+		}
+		return [calendars, accessToken];
+	} catch(error: any) {
+		if(error.message === "Invalid Credentials") {
+			const newToken = await refreshAccessToken(refreshToken);
+			if(!newToken) throw new Error("Invalid access token");
+			oauth2Client.setCredentials({ access_token: newToken });
+			const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+			const res = await calendar.calendarList.list();
+			const calendars = res.data.items;
+			if (!calendars || calendars.length === 0) {
+				console.log('No calendars found.');
+				return [];
+			}
+			return [calendars, newToken];
+		}
+		throw error;
 	}
-	return calendars;
 }
 
-export const getCalendarEvents = async (accessToken: string) => {
-	oauth2Client.setCredentials({ access_token: accessToken });
-	const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
-	const res = await calendar.events.list({
-		calendarId: 'primary',
-		timeMin: (new Date()).toISOString(),
-		maxResults: 20,
-		singleEvents: true,
-		orderBy: 'startTime',
-	});
+export const getCalendarEvents = async (accessToken: string, refreshToken: string): Promise<string[] | undefined> => {
+	try {
+		oauth2Client.setCredentials({ access_token: accessToken });
+		const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+		const res = await calendar.events.list({
+			calendarId: 'primary',
+			timeMin: (new Date()).toISOString(),
+			maxResults: 20,
+			singleEvents: true,
+			orderBy: 'startTime',
+		});
 
-	const events = res.data.items;
-	if (!events || events.length === 0) {
-		console.log('No upcoming events found.');
-		return;
+		const events = res.data.items;
+		if (!events || events.length === 0) {
+			console.log('No upcoming events found.');
+			return;
+		}
+
+		return events.map((event, i) => {
+			if(!event.start) return '';
+			const start = event.start.dateTime || event.start.date;
+			const end = event.end?(event.end.dateTime || event.end.date):"";
+			return `${start} - ${end} - ${event.summary}`;
+		});
+	} catch(error: any) {
+		if(error.message === "Invalid Credentials") {
+			const tokens = await refreshAccessToken(refreshToken);
+			if(!tokens) throw new Error("Invalid access token");
+			return getCalendarEvents(tokens, refreshToken);
+		}
+		throw error;
 	}
-
-	return events.map((event, i) => {
-		if(!event.start) return;
-		const start = event.start.dateTime || event.start.date;
-		const end = event.end?(event.end.dateTime || event.end.date):"";
-		return `${start} - ${end} - ${event.summary}`;
-	});
 }
 
 
@@ -100,14 +138,14 @@ export const addCalendarEvent = async (accessToken: string, refreshToken: string
 		return [result, accessToken];
 	} catch(error: any) {
 		if(error.message === "Invalid Credentials") {
-			const tokens = await getAccessToken(refreshToken);
-			oauth2Client.setCredentials(tokens);
+			const accessToken = await refreshAccessToken(refreshToken);
+			oauth2Client.setCredentials({ access_token: accessToken });
 			const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
 			const result = await calendar.events.insert({
 				calendarId,
 				requestBody: event,
 			});
-			return [result, String(tokens.access_token)];
+			return [result, String(accessToken)];
 		}
 		throw error;
 	}
@@ -125,14 +163,14 @@ export const cancelGoogleEvent = async (accessToken: string, refreshToken: strin
 		return [result, accessToken];
 	} catch(error: any) {
 		if(error.message === "Invalid Credentials") {
-			const tokens = await getAccessToken(refreshToken);
-			oauth2Client.setCredentials(tokens);
+			const accessToken = await refreshAccessToken(refreshToken);
+			oauth2Client.setCredentials({ access_token: accessToken });
 			const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
 			const result = await calendar.events.delete({
 				calendarId,
 				eventId,
 			});
-			return [result, String(tokens.access_token)];
+			return [result, String(accessToken)];
 		}
 		throw error;
 	}
