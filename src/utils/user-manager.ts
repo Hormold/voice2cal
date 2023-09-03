@@ -1,17 +1,13 @@
-
-import redis from "ioredis";
-import { UserSettings, TelegramUserinfo } from "../types.js";
-const redisClient = new redis(process.env.KV_URL!);
-
-
+import { type UserSettings, type TelegramUserinfo } from '../types.js'
+import redisClient from './redis.js'
 
 class User {
-	id: number = 0;
-	user: TelegramUserinfo = {} as TelegramUserinfo;
+	id = 0
+	user: TelegramUserinfo | null = null
 
-	defaultSettings = {
-		googleAccessToken: "",
-		googleRefreshToken: "",
+	defaultSettings: UserSettings = {
+		googleAccessToken: '',
+		googleRefreshToken: '',
 		googleCalendarId: null,
 		googleExpiresAt: null,
 		countyName: null,
@@ -22,37 +18,55 @@ class User {
 		googleUserInfo: {},
 		modeId: 1,
 		accessGranted: false,
-	} as UserSettings;
+		botUsage: 0,
+	}
 
 	constructor(user: TelegramUserinfo | { id: number }) {
-		this.id = user.id;
-		if('is_bot' in user)
-			this.user = user;
+		this.id = user.id
+		if ('is_bot' in user) this.user = user
 	}
 
 	async get() {
-		let user = await redisClient.get(`user:${this.id}`);
-		if(!user) {
-			await redisClient.set(`user:${this.id}`, JSON.stringify({
-				id: this.id,
-				...this.defaultSettings,
-			}));
-			user = await redisClient.get(`user:${this.id}`);
+		let user = await redisClient.get(`user:${this.id}`)
+		if (!user) {
+			await redisClient.set(
+				`user:${this.id}`,
+				JSON.stringify({
+					id: this.id,
+					...this.defaultSettings,
+				}),
+			)
+			user = await redisClient.get(`user:${this.id}`)
 		}
 
-		if(!user) throw new Error("User not found");
+		if (!user) throw new Error('User not found')
 
-		return JSON.parse(user) as typeof this.defaultSettings & { id: number };
+		const result = JSON.parse(user) as typeof this.defaultSettings & {
+			id: number
+		}
+
+		result.botUsage = Number(
+			(await redisClient.get(`bot:usage:${this.id}`)) ?? 0,
+		)
+
+		return result
 	}
 
 	async set(settings: Partial<typeof this.defaultSettings>) {
-		const user = await this.get();
-		await redisClient.set(`user:${this.id}`, JSON.stringify({
-			...user,
-			...settings,
-			tg: this.user,
-		}));
+		const user = await this.get()
+		await redisClient.set(
+			`user:${this.id}`,
+			JSON.stringify({
+				...user,
+				...settings,
+				tg: this.user,
+			}),
+		)
+	}
+
+	async incrBotUsage() {
+		await redisClient.incr(`bot:usage:${this.id}`)
 	}
 }
 
-export default User;
+export default User

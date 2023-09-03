@@ -32,12 +32,15 @@
     "@grammyjs/i18n": "^1.0.1",
     "@grammyjs/ratelimiter": "^1.2.0",
     "@grammyjs/storage-redis": "^2.3.1",
+    "express": "^4.18.2",
     "googleapis": "^105.0.0",
     "got": "12",
     "grammy": "^1.18.1",
     "ioredis": "^5.3.2",
     "langchain": "^0.0.135",
-    "zod": "^3.22.2"
+    "openai": "^4.4.0",
+    "zod": "^3.22.2",
+    "zod-to-json-schema": "^3.21.4"
   },
   "devDependencies": {
     "@onmoon/eslint-config": "^1.0.12",
@@ -46,11 +49,13 @@
     "@types/pg": "^8.6.6",
     "@vercel/node": "^3.0.3",
     "env-cmd": "^10.1.0",
+    "eslint-plugin-unicorn": "^48.0.1",
     "lint-staged": "^13.2.0",
     "nodemon": "^2.0.22",
     "prettier": "^2.8.7",
     "ts-jest": "^29.0.5",
     "ts-node": "^10.9.1",
-    "typescript": "^5.2.2"
+    "typescript": "^5.2.2",
+    "xo": "^0.56.0"
   }
 }

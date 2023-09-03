@@ -1,5 +1,6 @@
 import { oauth2_v2 } from "googleapis/build/src/apis/oauth2/v2";
 import { people_v1 } from "googleapis/build/src/apis/people/v1";
+import { calendar_v3 } from "googleapis/build/src/apis/calendar/v3";
 import { User as TelegramUser } from 'grammy/types'
 import { z } from "zod";
 
@@ -17,6 +18,7 @@ export type UserSettings = {
 	modeId?: number | null,
 	accessGranted?: boolean | null,
 	tg?: TelegramUser | null,
+	botUsage: number | null,
 }
 
 export type runFormat = {
@@ -29,6 +31,8 @@ export type runFormat = {
 export type GoogleUserinfo = oauth2_v2.Schema$Userinfo;
 export type GoogleContacts = people_v1.Schema$Person;
 export type TelegramUserinfo = TelegramUser;
+export type CalendarEvent = calendar_v3.Schema$Event;
+export type CalendarListEntiy = calendar_v3.Schema$CalendarListEntry;
 
 type GeoFeature = {
 	properties: {
@@ -69,10 +73,10 @@ export const zodSchema = z.object({
 		})).optional().describe("Array of reminders"),
 	}).optional().describe("Reminders for the event if needed"),
 })
-.describe("An object that describes a google calendar event")
+	.describe("An object that describes a google calendar event")
 
 export const contactsSchema = z.object({
 	name: z.array(
 		z.string()
-	).describe(`Variants of the name of the contact to search for`),
+	).describe(`Variants of the name of the contact to search for in user language and english`),
 });
