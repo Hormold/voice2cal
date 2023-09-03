@@ -6,7 +6,7 @@ import runWay2 from "./llm/way2.js";
 import runWay1 from "./llm/way1.js";
 import getOpenAiClient from "./utils/openai.js";
 import User from "./utils/user-manager.js";
-import { googleLogin } from "./utils/google.js";
+import { googleLogin, getContacts } from "./utils/google.js";
 import { getCalendarMenu, getModeMenu } from "./utils/functions.js";
 import { GeoData } from "./types.js";
 
@@ -89,6 +89,31 @@ bot.command('calendars', async (ctx) => {
         inline_keyboard: buttonsForCallback,
       },
   });
+});
+
+bot.command('contacts', async (ctx) => {
+  const user = new User(ctx.from!);
+  const userSettings = await user.get();
+
+  const [contacts, newAccessToken] = await getContacts(userSettings.googleAccessToken!, userSettings.googleRefreshToken!);
+  const name = ['Кристина']
+
+  // name - array of names, we need to search for each name in contacts
+  
+  const result = contacts.filter((contact) => {
+    // Check Name and Email if some partial match, non case sensitive
+    return name.some((n) => {
+      return contact.names?.some((contactName) => {
+        return contactName.displayName?.toLowerCase().includes(n.toLowerCase());
+      }) || contact.emailAddresses?.some((email) => {
+        return email.value?.toLowerCase().includes(n.toLowerCase());
+      });
+    });
+  });
+
+  ctx.reply(result.map((contact) => {
+    return (contact.names?.map((name) => name.displayName).join(", ") || "No name") + ": " + (contact.emailAddresses?.map((email) => email.value).join(", ") || "No email");
+  }).join("\n"));
 });
 
 bot.callbackQuery(/mode:(.+)/, async (ctx) => {

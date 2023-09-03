@@ -1,6 +1,4 @@
-import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-
 import { ChatOpenAI } from "langchain/chat_models/openai";
 import {
   ChatPromptTemplate,
@@ -8,28 +6,8 @@ import {
   HumanMessagePromptTemplate,
 } from "langchain/prompts";
 import { JsonOutputFunctionsParser } from "langchain/output_parsers";
-import { runFormat } from "../types.js";
+import { runFormat, zodSchema } from "../types.js";
 import { currentDT } from "../utils/functions.js";
-
-
-const zodSchema = z.object({
-	summary: z.string(),
-	description: z.string(),
-	location: z.string().optional().describe("Location of the event"),
-	start: z.object({
-		dateTime: z.string().describe("Date and time of the start of the event"),
-		timeZone: z.string().describe("Timezone of the event"),
-	}),
-	end: z.object({
-		dateTime: z.string().describe("Date and time of the end of the event"),
-		timeZone: z.string().describe("Timezone of the event"),
-	}),
-	recurrence: z.array(z.string()).optional().describe("Array of recurrence rules in RFC5545 format"),
-	attendees: z.array(z.object({
-		email: z.string(),
-	})).optional().describe("Array of attendees"),
-})
-.describe("An object that describes a google calendar event")
 
 const prompt = new ChatPromptTemplate({
   promptMessages: [
@@ -100,7 +78,7 @@ const runWay1 = async (
 			timezone: userSettings.timeZone,
 			cityName: userSettings.cityName,
 			countyName: userSettings.countyName,
-			currentDT: currentDT(userSettings.timeZone),
+			currentDT: currentDT(userSettings.timeZone!),
 			additionalInfo,
 		});
 
@@ -114,7 +92,7 @@ const runWay1 = async (
 		timezone: userSettings.timeZone,
 		cityName: userSettings.cityName,
 		countyName: userSettings.countyName,
-		currentDT: currentDT(userSettings.timeZone),
+		currentDT: currentDT(userSettings.timeZone!),
 	});
 
 	return response;

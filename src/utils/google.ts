@@ -1,5 +1,5 @@
 import { google } from "googleapis";
-import { GoogleUserinfo } from "../types";
+import { GoogleUserinfo, GoogleContacts } from "../types";
 
 const SCOPES = [
 	// Write to calendar
@@ -7,15 +7,15 @@ const SCOPES = [
 	'https://www.googleapis.com/auth/userinfo.profile',
 	'https://www.googleapis.com/auth/userinfo.email',
 	'https://www.googleapis.com/auth/calendar',
+	'https://www.googleapis.com/auth/contacts.readonly',
 	// Read from calendar
 ];
-
 
 // Generate google login link
 const oauth2Client = new google.auth.OAuth2(
 	process.env.GOOGLE_CLIENT_ID,
 	process.env.GOOGLE_CLIENT_SECRET,
-	process.env.WEBHOOK_URL || "http://localhost:3000/google/callback",
+	process.env.GOOGLE_CALLBACK_URL || "http://localhost:3000/google/callback",
 	
 );
 
@@ -171,6 +171,45 @@ export const cancelGoogleEvent = async (accessToken: string, refreshToken: strin
 				eventId,
 			});
 			return [result, String(accessToken)];
+		}
+		throw error;
+	}
+}
+
+export const getContacts = async (accessToken: string, refreshToken: string): Promise<[GoogleContacts[], string]> => {
+	try {
+		oauth2Client.setCredentials({ access_token: accessToken });
+		const people = google.people({ version: 'v1', auth: oauth2Client });
+		const res = await people.people.connections.list({
+			resourceName: 'people/me',
+			pageSize: 2000,
+			personFields: 'names,emailAddresses',
+		});
+
+		const connections = res.data.connections;
+		if (!connections || connections.length === 0) {
+			console.log('No contacts found.');
+			return [[], accessToken];
+		}
+		return [connections, accessToken];
+	} catch(error: any) {
+		if(error.message === "Invalid Credentials") {
+			const newToken = await refreshAccessToken(refreshToken);
+			if(!newToken) throw new Error("Invalid access token");
+			oauth2Client.setCredentials({ access_token: newToken });
+			const people = google.people({ version: 'v1', auth: oauth2Client });
+			const res = await people.people.connections.list({
+				resourceName: 'people/me',
+				pageSize: 9999,
+				personFields: 'names,emailAddresses',
+			});
+
+			const connections = res.data.connections;
+			if (!connections || connections.length === 0) {
+				console.log('No contacts found.');
+				return [[], newToken];
+			}
+			return [connections, newToken];
 		}
 		throw error;
 	}
