@@ -1,9 +1,11 @@
 import process from 'node:process'
-import OpenAI from 'openai'
+import { Configuration, OpenAIApi } from 'openai'
 
-const openai = new OpenAI({
-	apiKey: process.env.OPENAI_API_KEY,
-})
+const openai = new OpenAIApi(
+	new Configuration({
+		apiKey: process.env.OPENAI_API_KEY,
+	}),
+)
 
 export default function getOpenAiClient() {
 	return openai

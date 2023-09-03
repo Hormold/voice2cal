@@ -38,7 +38,7 @@
     "grammy": "^1.18.1",
     "ioredis": "^5.3.2",
     "langchain": "^0.0.135",
-    "openai": "^4.4.0",
+    "openai": "^3.3.0",
     "zod": "^3.22.2",
     "zod-to-json-schema": "^3.21.4"
   },

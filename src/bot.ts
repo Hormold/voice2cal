@@ -286,27 +286,27 @@ bot.on(['message:text', 'message:voice'], async (ctx) => {
 		)
 	}
 
-	let messageText = String(ctx.message.text)
+	let messageText = String(ctx.message.text ?? '')
 	/* If(messageText) {
 		return ctx.reply(JSON.stringify(ctx.message, null, 2), {
 			reply_to_message_id: ctx.message.message_id,
 		});
 	} */
 	const userLang = ctx.from?.language_code ?? 'en'
-	if (!messageText) {
+	if (!messageText || messageText.length === 0) {
 		try {
 			const file = await ctx.getFile()
-			const stream = got.stream(
-				`https://api.telegram.org/file/bot${process.env.BOT_TOKEN}/${file.file_path}`,
-			) as unknown as ReadStream
+			const fileUrl = `https://api.telegram.org/file/bot${process.env.BOT_TOKEN}/${file.file_path}`
+			const stream = got.stream(fileUrl) as unknown as ReadStream
 
 			stream.path = 'voice.ogg'
 
-			const { text } = await getOpenAiClient().audio.transcriptions.create({
-				file: stream as unknown as File,
-				model: 'whisper-1',
-			})
-			messageText = text
+			const response = await getOpenAiClient().createTranscription(
+				stream as unknown as File,
+				'whisper-1',
+			)
+
+			messageText = response.data.text
 		} catch (error) {
 			console.log(error)
 			return ctx.reply(`Problem with voice recognition, please try again!`)
