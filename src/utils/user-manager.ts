@@ -1,7 +1,10 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-import { type UserSettings, type TelegramUserinfo } from '../types.js'
+import {
+	type UserSettings,
+	type TelegramUserinfo,
+	type Invoice,
+} from '../types.js'
+import { userPlans } from '../constants.js'
 import redisClient from './redis.js'
-import { userPlans } from './paid.js'
 
 class User {
 	id = 0
@@ -25,6 +28,7 @@ class User {
 		autoRenewEnabled: true,
 		planId: 1,
 		stripeCustomerId: '',
+		stripeSubscriptionId: '',
 		subscriptionStartedAt: Date.now(),
 		subscriptionExpiresAt: Date.now() + 1000 * 60 * 60 * 24 * 30,
 	}
@@ -36,17 +40,20 @@ class User {
 		if ('is_bot' in user) this.user = user
 	}
 
-	async get(): Promise<typeof this.defaultSettings & { id: number }> {
-		let user = await redisClient.get(`user:${this.id}`)
+	async get(
+		extUserId?: number,
+	): Promise<typeof this.defaultSettings & { id: number }> {
+		const userId = extUserId ?? this.id
+		let user = await redisClient.get(`user:${userId}`)
 		if (!user) {
 			await redisClient.set(
-				`user:${this.id}`,
+				`user:${userId}`,
 				JSON.stringify({
 					...this.defaultSettings,
-					id: this.id,
+					id: userId,
 				}),
 			)
-			user = await redisClient.get(`user:${this.id}`)
+			user = await redisClient.get(`user:${userId}`)
 		}
 
 		if (!user) throw new Error('User not found')
@@ -57,7 +64,7 @@ class User {
 		}
 
 		result.botUsage = Number(
-			(await redisClient.get(`bot:usage:${this.id}`)) ?? 0,
+			(await redisClient.get(`bot:usage:${userId}`)) ?? 0,
 		)
 
 		this.settings = result
@@ -75,6 +82,10 @@ class User {
 				tg: this.user,
 			}),
 		)
+
+		if (settings.stripeCustomerId && settings.stripeCustomerId !== '') {
+			await redisClient.set(`user:stripe:${settings.stripeCustomerId}`, this.id)
+		}
 	}
 
 	async incrBotUsage() {
@@ -101,6 +112,23 @@ class User {
 		}
 
 		return false
+	}
+
+	async findByStripeCustomerId(customerId: string): Promise<UserSettings> {
+		const user = await redisClient.get(`user:stripe:${customerId}`)
+		if (!user) throw new Error('User not found')
+
+		this.id = Number(user)
+		const data = await this.get()
+		return data
+	}
+
+	async saveInvoice(userId: number, invoice: Invoice) {
+		await redisClient.hset(
+			`user:invoices:${userId}`,
+			invoice.id,
+			JSON.stringify(invoice),
+		)
 	}
 }
 

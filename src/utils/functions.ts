@@ -2,9 +2,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/naming-convention */
 import { type Plan, type CalendarEvent, type UserSettings } from '../types.js'
+import { userPlans } from '../constants.js'
 import User from './user-manager.js'
 import { getAllCalendars } from './google.js'
-import { userPlans } from './paid.js'
 
 export const buildPreviewString = (event: CalendarEvent) => {
 	const { summary, description, location, start, end, recurrence } = event

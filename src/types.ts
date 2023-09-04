@@ -4,6 +4,7 @@ import { calendar_v3 } from "googleapis/build/src/apis/calendar/v3";
 import { User as TelegramUser } from 'grammy/types'
 import { type Context } from 'grammy'
 import { z } from "zod";
+import Stripe from 'stripe'
 
 export type UserSettings = {
 	id: number,
@@ -24,6 +25,7 @@ export type UserSettings = {
 	autoRenewEnabled: boolean | null,
 	planId: number,
 	stripeCustomerId?: string,
+	stripeSubscriptionId?: string,
 	subscriptionStartedAt: number,
 	subscriptionExpiresAt: number,
 }
@@ -107,4 +109,8 @@ export type Plan = {
 	fastMode: boolean;
 	messagesPerMonth: number;
 	voiceMessages: boolean;
+	stripePlanId: string;
 }
+
+export type Subscription = Stripe.Subscription
+export type Invoice = Stripe.Invoice

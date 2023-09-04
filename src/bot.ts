@@ -1,9 +1,7 @@
-/* eslint-disable @typescript-eslint/restrict-plus-operands */
 /* eslint-disable complexity */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
+
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
+
 /* eslint-disable unicorn/prefer-top-level-await */
 /* eslint-disable unicorn/no-await-expression-member */
 /* eslint-disable @typescript-eslint/naming-convention */
@@ -30,10 +28,11 @@ import {
 import { type GeoData, type CalendarEvent, type MyContext } from './types.js'
 import redisClient from './utils/redis.js'
 import {
-	userPlans,
 	generateStripeLink,
 	cancelNextPayment,
+	createCustomerId,
 } from './utils/paid.js'
+import { userPlans } from './constants.js'
 
 if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY not set')
 const bot = new Bot<MyContext>(process.env.BOT_TOKEN!)
@@ -48,7 +47,7 @@ const commands = {
 
 bot.use(async (ctx, next) => {
 	if (ctx.chat?.type === 'private' && ctx.from) {
-		const user = new User(ctx.from!)
+		const user = new User(ctx.from)
 		const userSettings = await user.get()
 		const plan = user.getUserPlan()
 
@@ -87,7 +86,7 @@ bot.command(['help', 'start'], async (ctx) => {
 			`📅 Calendar: ${userSettings.calendarName}`,
 			`📍 Location: ${userSettings.cityName}, ${userSettings.countyName}`,
 			`⏰ Timezone: ${userSettings.timeZone}`,
-			`🔧 Mode: ${userSettings.modeId === 1 ? 'Fast' : 'Slow'}`,
+			`🔧 Mode: ${userSettings.modeId === 1 ? 'GPT-3' : 'GPT-4'}`,
 			`🆔 Your Telegram ID: ${ctx.from!.id}`,
 		]
 
@@ -125,9 +124,11 @@ bot.command('gift', async (ctx) => {
 
 	await user.set({
 		planId: plan.id,
-		subscriptionExpiresAt: (Date.now() + plan.period) as number,
+		subscriptionExpiresAt: Date.now() + plan.period,
 		subscriptionStartedAt: Date.now(),
 	})
+
+	await ctx.reply(`Plan #${plan.id} activated for user ${userId}`)
 })
 
 bot.command('subscribe', async (ctx) => {
@@ -155,13 +156,13 @@ bot.command('subscribe', async (ctx) => {
 		rows.push(
 			`📊 ${plan.name} (${plan.price} USD)`,
 			`📊 ${plan.messagesPerMonth} messages per 30 days`,
-			`📊 ${plan.fastMode ? '✅ GPT-4 Included' : '❌ No fast mode'}`,
+			`📊 ${plan.fastMode ? '✅ GPT-4 Included' : '❌ No GPT-4 Mode'}`,
 			`📊 ${plan.voiceMessages ? '✅ Voice messages' : '❌ No voice messages'}`,
 			'',
 		)
 	}
 
-	ctx.reply(`${rows.join('\n')}\n\nPlease select plan`, {
+	await ctx.reply(`${rows.join('\n')}\n\nPlease select plan`, {
 		reply_markup: {
 			inline_keyboard: getPlansMenu(userPlan, userSettings),
 		},
@@ -213,10 +214,10 @@ bot.callbackQuery(/cancelPayment/, async (ctx) => {
 			? 'Auto renew disabled'
 			: 'Auto renew enabled',
 	)
-	await cancelNextPayment(ctx.from!.id)
 	await user.set({
 		autoRenewEnabled: !userSettings.autoRenewEnabled,
 	})
+	await cancelNextPayment(ctx.from.id)
 })
 
 bot.callbackQuery(/plan:(.+)/, async (ctx) => {
@@ -239,7 +240,26 @@ bot.callbackQuery(/plan:(.+)/, async (ctx) => {
 		)
 	}
 
-	const stripeLink = await generateStripeLink(ctx.from.id, planId)
+	let customerId = userSettings.stripeCustomerId
+	if (!customerId) {
+		customerId = await createCustomerId(
+			ctx.from.id,
+			ctx.from.username!,
+			ctx.from.first_name,
+			ctx.from.last_name!,
+		)
+		await user.set({
+			stripeCustomerId: customerId,
+		})
+	}
+
+	const stripeLink = await generateStripeLink(ctx.from.id, customerId, planId)
+	if (!stripeLink) {
+		return ctx.editMessageText(
+			`Sorry, something went wrong, please try again later`,
+		)
+	}
+
 	await ctx.editMessageText(`Please pay ${plan.price} USD to continue`, {
 		reply_markup: {
 			inline_keyboard: [
@@ -541,7 +561,7 @@ bot.on(['message:text', 'message:voice'], async (ctx) => {
 						inline_keyboard: [
 							[
 								{
-									text: 'No, cancel',
+									text: 'Decline',
 									callback_data: `decline`,
 								},
 							],
@@ -573,7 +593,7 @@ bot.on(['message:text', 'message:voice'], async (ctx) => {
 				await ctx.api.editMessageText(
 					ctx.chat.id,
 					messageId,
-					`Event added to your calendar: ${userSettings.calendarName}`,
+					`Great news! Event added to your calendar: «${userSettings.calendarName}»\n${previewString}`,
 					{
 						reply_markup: {
 							inline_keyboard: [

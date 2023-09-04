@@ -9,6 +9,7 @@ import {
 } from './utils/google.js'
 import User from './utils/user-manager.js'
 import bot from './bot.js'
+import { processStripeEvent } from './utils/paid.js'
 
 const app = express()
 app.use(express.json())
@@ -79,6 +80,17 @@ app.all(
 		timeoutMilliseconds: 120_000, // I need it because I'm using OpenAI API and long chains of tasks
 	}),
 )
+
+app.all('/stripe/callback', processStripeEvent)
+app.get('/stripe/return/:status', async (request, response) => {
+	const { userId } = request.query as { userId: string }
+	await bot.api.sendMessage(
+		userId,
+		`👋🏼 Your subscription is updated! Checkout current status using /subscription command`,
+	)
+
+	response.redirect(`https://t.me/${process.env.BOT_NAME}`)
+})
 
 functions.http('handleTelegramWebhook', app)
 
