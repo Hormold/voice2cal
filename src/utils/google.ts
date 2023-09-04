@@ -148,7 +148,7 @@ export const addCalendarEvent = async (
 	refreshToken: string,
 	calendarId: string,
 	event: CalendarEvent,
-): Promise<[any, string]> => {
+): Promise<[string, string]> => {
 	event.source = {
 		title: 'Voice2Cal Bot',
 		url: 'https://t.me/voic2calbot',
@@ -161,17 +161,26 @@ export const addCalendarEvent = async (
 			requestBody: event,
 		})
 
-		return [result, accessToken]
+		if (!result.data.id) {
+			throw new Error('No event id')
+		}
+
+		return [result.data.id, accessToken]
 	} catch (error: any) {
 		if (error.message === 'Invalid Credentials') {
-			const accessToken = await refreshAccessToken(refreshToken)
-			oauth2Client.setCredentials({ access_token: accessToken })
+			const newAccessToken = await refreshAccessToken(refreshToken)
+			if (!newAccessToken) throw new Error('Invalid refresh token')
+			oauth2Client.setCredentials({ access_token: newAccessToken })
 			const calendar = google.calendar({ version: 'v3', auth: oauth2Client })
 			const result = await calendar.events.insert({
 				calendarId,
 				requestBody: event,
 			})
-			return [result, String(accessToken)]
+			if (!result.data.id) {
+				throw new Error('No event id')
+			}
+
+			return [result.data.id, newAccessToken]
 		}
 
 		throw new Error(error.message as string)

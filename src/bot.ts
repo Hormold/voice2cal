@@ -1,7 +1,6 @@
-/* eslint-disable complexity */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable complexity */
 /* eslint-disable unicorn/prefer-top-level-await */
-/* eslint-disable unicorn/no-await-expression-member */
 /* eslint-disable @typescript-eslint/naming-convention */
 import type { ReadStream } from 'node:fs'
 import process from 'node:process'
@@ -398,7 +397,8 @@ bot.command('login', async (ctx) => {
 bot.on('message:location', async (ctx) => {
 	const user = new User(ctx.from)
 	try {
-		const messageId = (await ctx.reply(`Processing location...`)).message_id
+		const message = await ctx.reply(`Processing location...`)
+		const messageId = message.message_id
 		const { latitude, longitude } = ctx.message.location
 		// Convert location to city name, timezone
 		const result = await fetch(
@@ -501,11 +501,10 @@ bot.on(['message:text', 'message:voice'], async (ctx) => {
 		return ctx.reply(`Message is empty, please try again!`)
 	}
 
-	const messageId = (
-		await ctx.reply(
-			`Processing started, it can take up to few minutes.\nText: ${messageText}`,
-		)
-	).message_id
+	const message = await ctx.reply(
+		`Processing started, it can take up to few minutes.\nText: ${messageText}`,
+	)
+	const messageId = message.message_id
 
 	try {
 		const mode = userSettings.modeId ?? 1
@@ -579,7 +578,7 @@ bot.on(['message:text', 'message:voice'], async (ctx) => {
 					return
 				}
 
-				const [googleResult, token] = await addCalendarEvent(
+				const [eventId, token] = await addCalendarEvent(
 					userSettings.googleAccessToken!,
 					userSettings.googleRefreshToken!,
 					userSettings.calendarId!,
@@ -601,7 +600,7 @@ bot.on(['message:text', 'message:voice'], async (ctx) => {
 								[
 									{
 										text: 'Cancel this event',
-										callback_data: `cancel:${googleResult.data.id}`,
+										callback_data: `cancel:${eventId.toString()}`,
 									},
 								],
 							],
