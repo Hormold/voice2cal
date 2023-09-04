@@ -429,10 +429,10 @@ bot.on(['message:text', 'message:voice'], async (ctx) => {
 
 	const plan = user.getUserPlan()
 
-	if (plan && plan.messagesPerMonth > userSettings.botUsage) {
+	if (userSettings.botUsage >= plan.messagesPerMonth) {
 		return ctx.reply(
 			`Sorry, you reached your monthly limit of ${user.getUserPlan()
-				?.messagesPerMonth} messages. Please upgrade your plan to continue using bot`,
+				?.messagesPerMonth} messages. Please upgrade your plan to continue using bot: /subscribe`,
 		)
 	}
 
@@ -482,7 +482,7 @@ bot.on(['message:text', 'message:voice'], async (ctx) => {
 
 	const messageId = (
 		await ctx.reply(
-			`Processing started, it can take up to few minutes. Text: ${messageText}`,
+			`Processing started, it can take up to few minutes.\nText: ${messageText}`,
 		)
 	).message_id
 
