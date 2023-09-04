@@ -2,7 +2,11 @@ import process from 'node:process'
 import express from 'express'
 import { webhookCallback } from 'grammy'
 import functions from '@google-cloud/functions-framework'
-import { getAccessToken, getGoogleId } from './utils/google.js'
+import {
+	getAccessToken,
+	getGoogleId,
+	checkGoogleAccess,
+} from './utils/google.js'
 import User from './utils/user-manager.js'
 import bot from './bot.js'
 
@@ -42,13 +46,26 @@ app.get('/google/callback', async (request, response) => {
 
 		response.redirect(`https://t.me/${process.env.BOT_NAME}`)
 
+		const isHaveAccess = await Promise.all([
+			await checkGoogleAccess(accessToken.access_token, 'calendar'),
+			await checkGoogleAccess(accessToken.access_token, 'contacts'),
+		])
+
+		if (isHaveAccess.some((access) => !access)) {
+			await bot.api.sendMessage(
+				userId,
+				`👋🏼 You are logged in as ${userInfo.name}, but you need to give access to Google Calendar and Contacts to use all features of this bot.`,
+			)
+		} else {
+			await bot.api.sendMessage(
+				userId,
+				`👋🏼 Successful! You are logged in as ${userInfo.name} (${userInfo.email})`,
+			)
+		}
+
 		await bot.api.sendMessage(
 			userId,
-			`👋🏼 Successful! You are logged in as ${userInfo.name} (${userInfo.email})`,
-		)
-		await bot.api.sendMessage(
-			userId,
-			`📍 Now, please send your location to set timezone & location.`,
+			`📍 Now, please send your location to set timezone & location`,
 		)
 	} catch (error: any) {
 		response.send(`Error: ${error.message}`)

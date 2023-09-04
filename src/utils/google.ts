@@ -150,7 +150,7 @@ export const addCalendarEvent = async (
 	event: CalendarEvent,
 ): Promise<[any, string]> => {
 	event.source = {
-		title: 'Voice2Cal',
+		title: 'Voice2Cal Bot',
 		url: 'https://t.me/voic2calbot',
 	}
 	try {
@@ -251,5 +251,41 @@ export const getContacts = async (
 		}
 
 		throw new Error(error.message as string)
+	}
+}
+
+export const checkGoogleAccess = async (
+	accessToken: string,
+	type: 'calendar' | 'contacts' = 'calendar',
+): Promise<boolean> => {
+	try {
+		const oauth2Client = new google.auth.OAuth2()
+		oauth2Client.setCredentials({ access_token: accessToken })
+
+		if (type === 'calendar') {
+			const calendar = google.calendar({ version: 'v3', auth: oauth2Client })
+			const calendarList = await calendar.calendarList.list()
+			const calendars = calendarList.data.items
+			if (!calendars || calendars.length === 0) {
+				return false
+			}
+		} else if (type === 'contacts') {
+			const people = google.people({ version: 'v1', auth: oauth2Client })
+			const result = await people.people.connections.list({
+				resourceName: 'people/me',
+				pageSize: 1,
+				personFields: 'names',
+			})
+
+			const connections = result.data.connections
+			if (!connections || connections.length === 0) {
+				return false
+			}
+		}
+
+		return true
+	} catch (error: any) {
+		console.log(`checkGoogleAccess error: ${error.message}`)
+		return false
 	}
 }

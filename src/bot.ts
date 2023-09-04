@@ -1,4 +1,10 @@
+/* eslint-disable @typescript-eslint/restrict-plus-operands */
+/* eslint-disable complexity */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable unicorn/prefer-top-level-await */
 /* eslint-disable unicorn/no-await-expression-member */
 /* eslint-disable @typescript-eslint/naming-convention */
 import type { ReadStream } from 'node:fs'
@@ -19,19 +25,56 @@ import {
 	buildPreviewString,
 	getCalendarMenu,
 	getModeMenu,
+	getPlansMenu,
 } from './utils/functions.js'
-import { type GeoData, type CalendarEvent } from './types.js'
+import { type GeoData, type CalendarEvent, type MyContext } from './types.js'
 import redisClient from './utils/redis.js'
+import {
+	userPlans,
+	generateStripeLink,
+	cancelNextPayment,
+} from './utils/paid.js'
 
 if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY not set')
-const bot = new Bot(process.env.BOT_TOKEN!)
+const bot = new Bot<MyContext>(process.env.BOT_TOKEN!)
 
 const commands = {
 	login: '👤 Login to Google Account',
 	calendars: '📅 Select calendar',
 	reset: '🔧 Reset Google Account',
 	mode: '🔧 Select mode (GPT-3.5 or GPT-4)',
+	subscribe: '🔧 Subscribe to PRO plans',
 }
+
+bot.use(async (ctx, next) => {
+	if (ctx.chat?.type === 'private' && ctx.from) {
+		const user = new User(ctx.from!)
+		const userSettings = await user.get()
+		const plan = user.getUserPlan()
+
+		if (plan && userSettings.subscriptionExpiresAt < Date.now()) {
+			await user.set({
+				planId: 1,
+				subscriptionExpiresAt: Date.now() + plan.period,
+				subscriptionStartedAt: Date.now(),
+			})
+			await user.resetBotUsage()
+		}
+	}
+
+	await next()
+})
+
+bot.catch(async (error) => {
+	if (process.env.ADMIN_ID) {
+		await bot.api.sendMessage(
+			process.env.ADMIN_ID,
+			`Global error: ${error.message}`,
+		)
+	}
+
+	console.log(`Error: ${error.message}`)
+})
 
 bot.command(['help', 'start'], async (ctx) => {
 	const user = new User(ctx.from!)
@@ -45,17 +88,16 @@ bot.command(['help', 'start'], async (ctx) => {
 			`📍 Location: ${userSettings.cityName}, ${userSettings.countyName}`,
 			`⏰ Timezone: ${userSettings.timeZone}`,
 			`🔧 Mode: ${userSettings.modeId === 1 ? 'Fast' : 'Slow'}`,
+			`🆔 Your Telegram ID: ${ctx.from!.id}`,
 		]
 
-		if (userSettings.botUsage) {
-			personalData.push(`📊 Bot usage: ${userSettings.botUsage} times`)
-		}
-
-		if (userSettings.accessGranted) {
-			personalData.push(`✅ Access granted`)
-		} else {
+		const userPlan = user.getUserPlan()
+		if (userPlan) {
+			const resetInDays = Math.ceil(
+				(userSettings.subscriptionExpiresAt - Date.now()) / 1000 / 60 / 60 / 24,
+			)
 			personalData.push(
-				`❌ Access to bot not granted, contact @define to get access`,
+				`📊 Plan: ${userPlan.name}, usage ${userSettings.botUsage}/${userPlan.messagesPerMonth}. Reset in ${resetInDays} days`,
 			)
 		}
 	}
@@ -68,17 +110,62 @@ bot.command(['help', 'start'], async (ctx) => {
 	await ctx.reply(`${header}\n\n${personalData.join('\n')}\n\n${commandstr}`)
 })
 
-bot.command('sure', async (ctx) => {
-	const user = new User(ctx.from!)
+bot.command('gift', async (ctx) => {
+	if (ctx.from?.id !== Number(process.env.ADMIN_ID)) {
+		return ctx.reply(`Sorry, this command only for admin`)
+	}
+
+	const [_, userId, planId] = ctx.message!.text.split(' ')
+	const user = new User({ id: Number(userId) })
+	await user.get()
+	const plan = userPlans.find((plan) => plan.id === Number(planId))
+	if (!plan) {
+		return ctx.reply(`Plan not found`)
+	}
+
 	await user.set({
-		accessGranted: true,
+		planId: plan.id,
+		subscriptionExpiresAt: (Date.now() + plan.period) as number,
+		subscriptionStartedAt: Date.now(),
 	})
-	if (process.env.ADMIN_ID)
-		await bot.api.sendMessage(
-			process.env.ADMIN_ID,
-			`User ${ctx.from!.id} (${ctx.from!.username}) granted access to bot`,
+})
+
+bot.command('subscribe', async (ctx) => {
+	const user = new User(ctx.from!)
+	const userSettings = await user.get()
+	const userPlan = user.getUserPlan()
+	const currentPlan = `${userPlan?.name} (${userSettings.botUsage}/${userPlan?.messagesPerMonth})	message per 30 days`
+	const resetInDays = Math.ceil(
+		(userSettings.subscriptionExpiresAt - Date.now()) / 1000 / 60 / 60 / 24,
+	)
+	const autoRenewEnabled =
+		userPlan.id > 1 && userSettings.autoRenewEnabled
+			? '✅ Enabled'
+			: '❌ Disabled'
+
+	const rows = [
+		`Your current plan: ${currentPlan}`,
+		`Next reset/payment: ${resetInDays} days`,
+		`Auto renew: ${autoRenewEnabled}`,
+		'',
+		'',
+	]
+
+	for (const plan of userPlans) {
+		rows.push(
+			`📊 ${plan.name} (${plan.price} USD)`,
+			`📊 ${plan.messagesPerMonth} messages per 30 days`,
+			`📊 ${plan.fastMode ? '✅ GPT-4 Included' : '❌ No fast mode'}`,
+			`📊 ${plan.voiceMessages ? '✅ Voice messages' : '❌ No voice messages'}`,
+			'',
 		)
-	await ctx.reply(`Access granted, please use /help to see available commands`)
+	}
+
+	ctx.reply(`${rows.join('\n')}\n\nPlease select plan`, {
+		reply_markup: {
+			inline_keyboard: getPlansMenu(userPlan, userSettings),
+		},
+	})
 })
 
 bot.command('reset', async (ctx) => {
@@ -118,6 +205,55 @@ bot.command('calendars', async (ctx) => {
 	})
 })
 
+bot.callbackQuery(/cancelPayment/, async (ctx) => {
+	const user = new User(ctx.from)
+	const userSettings = await user.get()
+	await ctx.editMessageText(
+		userSettings.autoRenewEnabled
+			? 'Auto renew disabled'
+			: 'Auto renew enabled',
+	)
+	await cancelNextPayment(ctx.from!.id)
+	await user.set({
+		autoRenewEnabled: !userSettings.autoRenewEnabled,
+	})
+})
+
+bot.callbackQuery(/plan:(.+)/, async (ctx) => {
+	const user = new User(ctx.from)
+	const planId = Number(ctx.match[1])
+	const userSettings = await user.get()
+
+	if (userSettings.planId === planId) {
+		return ctx.editMessageText(`You already have this plan`)
+	}
+
+	const plan = userPlans.find((plan) => plan.id === planId)
+	if (!plan) {
+		return ctx.editMessageText(`Plan not found`)
+	}
+
+	if (plan.id < userSettings.planId) {
+		return ctx.editMessageText(
+			`You can't downgrade your plan, it be downgraded automatically after current plan expires`,
+		)
+	}
+
+	const stripeLink = await generateStripeLink(ctx.from.id, planId)
+	await ctx.editMessageText(`Please pay ${plan.price} USD to continue`, {
+		reply_markup: {
+			inline_keyboard: [
+				[
+					{
+						text: 'Pay with Stripe',
+						url: stripeLink,
+					},
+				],
+			],
+		},
+	})
+})
+
 bot.callbackQuery('decline', async (ctx) => {
 	await ctx.editMessageText(`Ok, this event not be added to your calendar`, {
 		reply_markup: {
@@ -129,10 +265,17 @@ bot.callbackQuery('decline', async (ctx) => {
 
 bot.callbackQuery(/mode:(.+)/, async (ctx) => {
 	const user = new User(ctx.from)
+	await user.get()
 	const mode = Number(ctx.match[1])
+	const userPlan = user.getUserPlan()
+	if (userPlan.fastMode && mode === 2) {
+		return ctx.reply(`Sorry, this feature is available only for Ultra users`)
+	}
+
 	await user.set({
 		modeId: Number(mode),
 	})
+
 	await ctx.editMessageText(`Please select mode`, {
 		reply_markup: {
 			inline_keyboard: await getModeMenu(ctx),
@@ -165,7 +308,7 @@ bot.callbackQuery(/cancel:(.+)/, async (ctx) => {
 		})
 	} catch (error) {
 		console.log(error)
-		return ctx.reply(`Problem with canceling event, please try again!`)
+		await ctx.reply(`Problem with canceling event, please try again!`)
 	}
 })
 
@@ -193,7 +336,10 @@ bot.callbackQuery(/calendar:(.+)/, async (ctx) => {
 		(calendar) => calendar?.id === calendarId,
 	)
 
-	if (!targetCalendar) return ctx.reply(`Calendar not found`)
+	if (!targetCalendar) {
+		await ctx.reply(`Calendar not found`)
+		return
+	}
 
 	await user.set({
 		calendarId,
@@ -245,6 +391,7 @@ bot.on('message:location', async (ctx) => {
 			state,
 			timezone: { name: timeZone },
 		} = data
+
 		await user.set({
 			cityName: city,
 			countyName: `${state} (${country_code})`,
@@ -260,7 +407,7 @@ bot.on('message:location', async (ctx) => {
 		console.log(data)
 	} catch (error) {
 		console.log(error)
-		await ctx.reply(`Problem with location, please try again!`)
+		await ctx.reply(`Problem with location, please try again later!`)
 	}
 })
 
@@ -280,9 +427,19 @@ bot.on(['message:text', 'message:voice'], async (ctx) => {
 		)
 	}
 
-	if (!userSettings.accessGranted) {
+	const plan = user.getUserPlan()
+
+	if (plan && plan.messagesPerMonth > userSettings.botUsage) {
 		return ctx.reply(
-			'Access to bot not granted, contact @define to get access. This is a developer preview, so access is limited.',
+			`Sorry, you reached your monthly limit of ${user.getUserPlan()
+				?.messagesPerMonth} messages. Please upgrade your plan to continue using bot`,
+		)
+	}
+
+	if (!plan?.fastMode && userSettings.modeId === 2) {
+		// Failsafe
+		return ctx.reply(
+			`Sorry, this feature is available only for Ultra users, please use /mode to switch to slow mode`,
 		)
 	}
 
@@ -293,7 +450,13 @@ bot.on(['message:text', 'message:voice'], async (ctx) => {
 		});
 	} */
 	const userLang = ctx.from?.language_code ?? 'en'
-	if (!messageText || messageText.length === 0) {
+	if ((!messageText || messageText.length === 0) && ctx.message.voice) {
+		if (!plan?.voiceMessages) {
+			return ctx.reply(
+				`Sorry, voice messages not allowed for your plan, please upgrade your plan to continue using bot`,
+			)
+		}
+
 		try {
 			const file = await ctx.getFile()
 			const fileUrl = `https://api.telegram.org/file/bot${process.env.BOT_TOKEN}/${file.file_path}`
@@ -311,6 +474,10 @@ bot.on(['message:text', 'message:voice'], async (ctx) => {
 			console.log(error)
 			return ctx.reply(`Problem with voice recognition, please try again!`)
 		}
+	}
+
+	if (!messageText) {
+		return ctx.reply(`Message is empty, please try again!`)
 	}
 
 	const messageId = (
@@ -355,11 +522,12 @@ bot.on(['message:text', 'message:voice'], async (ctx) => {
 			const event = result as CalendarEvent
 
 			if (!event?.start?.dateTime || !event?.end?.dateTime) {
-				return await ctx.api.editMessageText(
+				await ctx.api.editMessageText(
 					ctx.chat.id,
 					messageId,
 					`Error: Event start or end time not set`,
 				)
+				return
 			}
 
 			const previewString = buildPreviewString(event)
@@ -425,9 +593,14 @@ bot.on(['message:text', 'message:voice'], async (ctx) => {
 		await ctx.api.editMessageText(
 			ctx.chat.id,
 			messageId,
-			`Error: ${error.message}`,
+			`Sorry, something went wrong! Contact @define to get help`,
 		)
-		console.log(error)
+
+		if (process.env.ADMIN_ID) {
+			await bot.api.sendMessage(process.env.ADMIN_ID, `Error: ${error.message}`)
+		}
+
+		console.log(`Error: ${error.message}`)
 	}
 })
 
