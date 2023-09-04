@@ -1,11 +1,13 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import process from 'node:process'
 import type express from 'express'
+import { Bot } from 'grammy'
 import { type Subscription, type Invoice } from '../types.js'
 import { userPlans } from '../constants.js'
 import stripe from './stripe.js'
 import User from './user-manager.js'
 
+const bot = new Bot(process.env.BOT_TOKEN!)
 const userManager = new User({ id: 0 })
 
 export const createCustomerId = async (
@@ -131,7 +133,10 @@ export const processStripeEvent = async (
 				)
 			) {
 				try {
-					// TODO: Send message to user
+					await bot.api.sendMessage(
+						user.id,
+						`Your subscription has been successfully renewed!`,
+					)
 				} catch (error: unknown) {
 					console.error(error)
 				}

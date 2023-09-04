@@ -1,15 +1,15 @@
 const config = {
 	// ...other ESLint configurations
-	"rules": {
+	rules: {
 		// ...other rules
-		"@typescript-eslint/naming-convention": [
-			"error",
+		'@typescript-eslint/naming-convention': [
+			'error',
 			{
-				"selector": "property",
-				"format": ["strictCamelCase", "snake_case"]
-			}
-		]
-	}
+				selector: 'property',
+				format: ['strictCamelCase', 'snake_case'],
+			},
+		],
+	},
 }
 
-export default config;
+export default config

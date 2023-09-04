@@ -1,7 +1,5 @@
 /* eslint-disable complexity */
-
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-
 /* eslint-disable unicorn/prefer-top-level-await */
 /* eslint-disable unicorn/no-await-expression-member */
 /* eslint-disable @typescript-eslint/naming-convention */
@@ -87,7 +85,6 @@ bot.command(['help', 'start'], async (ctx) => {
 			`📍 Location: ${userSettings.cityName}, ${userSettings.countyName}`,
 			`⏰ Timezone: ${userSettings.timeZone}`,
 			`🔧 Mode: ${userSettings.modeId === 1 ? 'GPT-3' : 'GPT-4'}`,
-			`🆔 Your Telegram ID: ${ctx.from!.id}`,
 		]
 
 		const userPlan = user.getUserPlan()
@@ -111,6 +108,10 @@ bot.command(['help', 'start'], async (ctx) => {
 
 bot.command('gift', async (ctx) => {
 	if (ctx.from?.id !== Number(process.env.ADMIN_ID)) {
+		await bot.api.sendMessage(
+			Number(process.env.ADMIN_ID),
+			`User ${ctx.from?.id} trying to use gift command`,
+		)
 		return ctx.reply(`Sorry, this command only for admin`)
 	}
 

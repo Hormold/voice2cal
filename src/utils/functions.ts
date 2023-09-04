@@ -77,8 +77,8 @@ export const currentDT = (timeZone = 'Europe/Moscow'): Date => {
 }
 
 const modes = [
-	[1, `Fast, just extract data only from the text(GPT - 3.5)`],
-	[2, `Slow, but more accurate with Bing search and other tools(GPT - 4)`],
+	[1, `GPT3, Fast, just extract data only from the text`],
+	[2, `GPT4, Slow, but more accurate with Bing search and other tools`],
 ]
 
 export const getModeMenu = async (ctx: any) => {
