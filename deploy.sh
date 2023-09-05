@@ -7,7 +7,7 @@ gcloud --quiet beta functions deploy voice2cal \
   --entry-point=handleTelegramWebhook \
   --trigger-http \
   --allow-unauthenticated \
-  --env-vars-file .env.yaml \
+  --env-vars-file prod.env.yaml \
   --min-instances 1 \
   --max-instances 3 \
   --project hormold \

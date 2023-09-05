@@ -34,6 +34,7 @@ import { userPlans } from './constants.js'
 
 if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY not set')
 const bot = new Bot<MyContext>(process.env.BOT_TOKEN!)
+const isDev = process.env.NODE_ENV === 'development'
 
 const commands = {
 	login: '👤 Login to Google Account',
@@ -274,20 +275,41 @@ bot.callbackQuery(/plan:(.+)/, async (ctx) => {
 		)
 	}
 
-	let customerId = userSettings.stripeCustomerId
-	if (!customerId) {
-		customerId = await createCustomerId(
-			ctx.from.id,
-			ctx.from.username!,
-			ctx.from.first_name,
-			ctx.from.last_name!,
-		)
-		await user.set({
-			stripeCustomerId: customerId,
-		})
+	let customerId
+
+	if (isDev) {
+		customerId = userSettings.devStripeCustomerId
+		if (!customerId) {
+			customerId = await createCustomerId(
+				ctx.from.id,
+				ctx.from.username!,
+				ctx.from.first_name,
+				ctx.from.last_name!,
+			)
+			await user.set({
+				devStripeCustomerId: customerId,
+			})
+		}
+	} else {
+		customerId = userSettings.stripeCustomerId
+		if (!customerId) {
+			customerId = await createCustomerId(
+				ctx.from.id,
+				ctx.from.username!,
+				ctx.from.first_name,
+				ctx.from.last_name!,
+			)
+			await user.set({
+				stripeCustomerId: customerId,
+			})
+		}
 	}
 
-	const stripeLink = await generateStripeLink(ctx.from.id, customerId, planId)
+	const stripeLink = await generateStripeLink(
+		ctx.from.id,
+		String(customerId),
+		planId,
+	)
 	if (!stripeLink) {
 		return ctx.editMessageText(
 			`Sorry, something went wrong, please try again later`,

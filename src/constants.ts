@@ -1,4 +1,7 @@
+import process from 'node:process'
 import { type Plan } from './types.js'
+
+const isDev = process.env.NODE_ENV === 'development'
 
 export const userPlans = [
 	{
@@ -18,7 +21,9 @@ export const userPlans = [
 		fastMode: false,
 		messagesPerMonth: 100,
 		voiceMessages: true,
-		stripePlanId: 'price_1NmiOeFWIUVIqUXgYpGowpp3',
+		stripePlanId: isDev
+			? 'price_1NmnVYFWIUVIqUXgnf82QMTV'
+			: 'price_1NmiOeFWIUVIqUXgYpGowpp3',
 	},
 	{
 		id: 3,
@@ -28,6 +33,8 @@ export const userPlans = [
 		fastMode: true,
 		messagesPerMonth: 500,
 		voiceMessages: true,
-		stripePlanId: 'price_1NmiYzFWIUVIqUXgWc2fzx37',
+		stripePlanId: isDev
+			? 'price_1NmnWKFWIUVIqUXgbfhdLcqm'
+			: 'price_1NmiYzFWIUVIqUXgWc2fzx37',
 	},
 ] as Plan[]

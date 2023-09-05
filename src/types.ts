@@ -28,6 +28,8 @@ export type UserSettings = {
 	planId: number,
 	stripeCustomerId?: string,
 	stripeSubscriptionId?: string,
+	devStripeCustomerId?: string,
+	devStripeSubscriptionId?: string,
 	subscriptionStartedAt: number,
 	subscriptionExpiresAt: number,
 }
