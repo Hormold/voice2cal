@@ -5,6 +5,7 @@ import {
 } from '../types.js'
 import { userPlans } from '../constants.js'
 import redisClient from './redis.js'
+import { refreshAccessToken } from './google.js'
 
 class User {
 	id = 0
@@ -12,6 +13,8 @@ class User {
 
 	defaultSettings: UserSettings = {
 		id: 0,
+		lastActivityAt: Date.now(),
+		createdAt: Date.now(),
 		googleAccessToken: '',
 		googleRefreshToken: '',
 		googleCalendarId: 'primary',
@@ -86,6 +89,19 @@ class User {
 		if (settings.stripeCustomerId && settings.stripeCustomerId !== '') {
 			await redisClient.set(`user:stripe:${settings.stripeCustomerId}`, this.id)
 		}
+	}
+
+	async checkGoogleTokenAndGet(): Promise<UserSettings> {
+		await this.get()
+		const newAccessToken = (await refreshAccessToken(
+			this.settings.googleRefreshToken!,
+		))!
+		if (!newAccessToken) throw new Error('Invalid refresh token')
+		await this.set({
+			googleAccessToken: String(newAccessToken),
+		})
+		this.settings.googleAccessToken = String(newAccessToken)
+		return this.settings
 	}
 
 	async incrBotUsage() {

@@ -6,17 +6,17 @@ import { userPlans } from '../constants.js'
 import User from './user-manager.js'
 import { getAllCalendars } from './google.js'
 
-export const buildPreviewString = (event: CalendarEvent) => {
+export const buildPreviewString = (event: CalendarEvent, userTimeZone?: string) => {
 	const { summary, description, location, start, end, recurrence } = event
 	if (!start || !end) {
 		return ''
 	}
 
 	const startDT = new Date(start.dateTime!).toLocaleString('en', {
-		timeZone: start?.timeZone ?? 'UTC',
+		timeZone: userTimeZone ?? start?.timeZone ?? 'UTC',
 	})
 	const endDT = new Date(end.dateTime!).toLocaleString('en', {
-		timeZone: end?.timeZone ?? 'UTC',
+		timeZone: userTimeZone ?? end?.timeZone ?? 'UTC',
 	})
 
 	const rows = [`📅 ${summary}`, `🕐 ${startDT} - ${endDT}`]
@@ -77,8 +77,8 @@ export const currentDT = (timeZone = 'Europe/Moscow'): Date => {
 }
 
 const modes = [
-	[1, `GPT3, Fast, just extract data only from the text`],
-	[2, `GPT4, Slow, but more accurate with Bing search and other tools`],
+	[1, `GPT3 Only, Fast, just extract data only from the text`],
+	[2, `GPT4+GPT3.5, Slow, but more accurate with Bing search and other tools`],
 ]
 
 export const getModeMenu = async (ctx: any) => {

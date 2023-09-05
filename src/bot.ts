@@ -11,6 +11,7 @@ import {
 	getAllCalendars,
 	cancelGoogleEvent,
 	googleLogin,
+	getCalendarEvents,
 } from './utils/google.js'
 import runWay2 from './llm/way2.js'
 import runWay1 from './llm/way1.js'
@@ -40,6 +41,7 @@ const commands = {
 	reset: '🔧 Reset Google Account',
 	mode: '🔧 Select mode (GPT-3.5 or GPT-4)',
 	subscribe: '🔧 Subscribe to PRO plans',
+	events: '📅 Show 20 upcoming events',
 }
 
 bot.use(async (ctx, next) => {
@@ -56,6 +58,12 @@ bot.use(async (ctx, next) => {
 			})
 			await user.resetBotUsage()
 		}
+
+		await user.set({
+			lastActivityAt: Date.now(),
+		})
+
+		await ctx.replyWithChatAction('typing')
 	}
 
 	await next()
@@ -75,15 +83,23 @@ bot.catch(async (error) => {
 bot.command(['help', 'start'], async (ctx) => {
 	const user = new User(ctx.from!)
 	const userSettings = await user.get()
+
 	let personalData = [] as string[]
 
 	if (userSettings.googleAccessToken) {
+		let modelName = 'GPT-4 + GPT-3.5'
+		if (userSettings.modeId === 1) {
+			modelName = userSettings.planId > 1 ? 'GPT-4' : 'GPT-3.5'
+		}
+
 		personalData = [
 			`👤 Logged in as ${userSettings.googleUserInfo?.name} (${userSettings.googleUserInfo?.email})`,
 			`📅 Calendar: ${userSettings.calendarName}`,
 			`📍 Location: ${userSettings.cityName}, ${userSettings.countyName}`,
 			`⏰ Timezone: ${userSettings.timeZone}`,
-			`🔧 Mode: ${userSettings.modeId === 1 ? 'GPT-3' : 'GPT-4'}`,
+			// Mode
+			`🔧 Speed: ${userSettings.modeId! < 2 ? 'Fast+Simple' : 'Slow+Powerful'}`,
+			`🤖 Model: ${modelName}`,
 		]
 
 		const userPlan = user.getUserPlan()
@@ -97,7 +113,7 @@ bot.command(['help', 'start'], async (ctx) => {
 		}
 	}
 
-	const header = `[Developer Preview] This bot can help you to manage your calendar using text/voice messages`
+	const header = `This bot can help you to manage your calendar using text/voice messages`
 	const commandstr = Object.entries(commands)
 		.map(([command, description]) => `/${command} - ${description}`)
 		.join('\n')
@@ -204,6 +220,24 @@ bot.command('calendars', async (ctx) => {
 			inline_keyboard: buttonsForCallback,
 		},
 	})
+})
+
+bot.command('events', async (ctx) => {
+	const user = new User(ctx.from!)
+	const userSettings = await user.checkGoogleTokenAndGet()
+
+	const allEvents = (await getCalendarEvents(
+		userSettings.googleAccessToken!,
+		userSettings.calendarId!,
+		true,
+	)) as CalendarEvent[]
+
+	let eventString = ''
+	for (const event of allEvents) {
+		eventString += buildPreviewString(event, userSettings.timeZone!) + '\n\n'
+	}
+
+	await ctx.reply(`Found ${allEvents.length} events:\n\n${eventString}`)
 })
 
 bot.callbackQuery(/cancelPayment/, async (ctx) => {
@@ -434,7 +468,7 @@ bot.on('message:location', async (ctx) => {
 
 bot.on(['message:text', 'message:voice'], async (ctx) => {
 	const user = new User(ctx.from)
-	const userSettings = await user.get()
+	const userSettings = await user.checkGoogleTokenAndGet()
 	// All answers with emoji
 	if (!userSettings.timeZone) {
 		return ctx.reply(
@@ -550,7 +584,7 @@ bot.on(['message:text', 'message:voice'], async (ctx) => {
 				return
 			}
 
-			const previewString = buildPreviewString(event)
+			const previewString = buildPreviewString(event, userSettings.timeZone)
 
 			await ctx.api.editMessageText(
 				ctx.chat.id,

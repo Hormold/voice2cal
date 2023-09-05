@@ -38,7 +38,7 @@ export const getGoogleId = async (
 	return result.data
 }
 
-const refreshAccessToken = async (
+export const refreshAccessToken = async (
 	refreshToken: string,
 ): Promise<string | null> => {
 	oauth2Client.setCredentials({ access_token: '', refresh_token: refreshToken })
@@ -107,13 +107,14 @@ export const getAllCalendars = async (
 
 export const getCalendarEvents = async (
 	accessToken: string,
-	refreshToken: string,
-): Promise<string[] | undefined> => {
+	calendarId: string,
+	isRaw = false,
+): Promise<string[] | CalendarEvent[] | undefined> => {
 	try {
 		oauth2Client.setCredentials({ access_token: accessToken })
 		const calendar = google.calendar({ version: 'v3', auth: oauth2Client })
 		const result = await calendar.events.list({
-			calendarId: 'primary',
+			calendarId,
 			timeMin: new Date().toISOString(),
 			maxResults: 20,
 			singleEvents: true,
@@ -126,6 +127,8 @@ export const getCalendarEvents = async (
 			return
 		}
 
+		if (isRaw) return events
+
 		return events.map((event, i) => {
 			if (!event.start) return ''
 			const start = event.start.dateTime ?? event.start.date
@@ -133,12 +136,6 @@ export const getCalendarEvents = async (
 			return `${start} - ${end} - ${event.summary}`
 		})
 	} catch (error: any) {
-		if (error.message === 'Invalid Credentials') {
-			const tokens = await refreshAccessToken(refreshToken)
-			if (!tokens) throw new Error('Invalid access token')
-			return getCalendarEvents(tokens, refreshToken)
-		}
-
 		throw new Error(error.message as string)
 	}
 }

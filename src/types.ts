@@ -8,6 +8,8 @@ import Stripe from 'stripe'
 
 export type UserSettings = {
 	id: number,
+	lastActivityAt?: number,
+	createdAt?: number,
 	googleAccessToken?: string,
 	googleRefreshToken?: string,
 	googleCalendarId?: string | null,
