@@ -1,4 +1,5 @@
 import process from 'node:process'
+import { type Buffer } from 'node:buffer'
 import express from 'express'
 import { webhookCallback } from 'grammy'
 import functions from '@google-cloud/functions-framework'
@@ -12,7 +13,18 @@ import bot from './bot.js'
 import { processStripeEvent } from './utils/paid.js'
 
 const app = express()
-app.use(express.json())
+
+app.use(
+	express.json({
+		verify(
+			request: typeof express.request & { rawBody: Buffer },
+			response,
+			buf,
+		) {
+			request.rawBody = buf
+		},
+	}),
+)
 app.use(express.urlencoded({ extended: true }))
 
 app.get('/google/callback', async (request, response) => {
@@ -86,7 +98,7 @@ app.get('/stripe/return/:status', async (request, response) => {
 	const { userId } = request.query as { userId: string }
 	await bot.api.sendMessage(
 		userId,
-		`👋🏼 Your subscription is updated! Checkout current status using /subscription command`,
+		`👋🏼 Your subscription is updated! Checkout current status using /subscribe command`,
 	)
 
 	response.redirect(`https://t.me/${process.env.BOT_NAME}`)

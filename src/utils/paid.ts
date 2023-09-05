@@ -49,6 +49,17 @@ export const generateStripeLink = async (
 		mode: 'subscription',
 		payment_method_types: ['card'],
 		customer: customerId,
+		client_reference_id: String(userId),
+		automatic_tax: {
+			enabled: true,
+		},
+		tax_id_collection: {
+			enabled: true,
+		},
+		customer_update: {
+			address: 'auto',
+			name: 'auto',
+		},
 		line_items: [
 			{
 				price: String(plan.stripePlanId),
@@ -57,9 +68,11 @@ export const generateStripeLink = async (
 		],
 		success_url: `${process.env.BASE_URL}/stripe/return/success?userId=${userId}&planId=${planId}`,
 		cancel_url: `${process.env.BASE_URL}/stripe/return/cancel?userId=${userId}&planId=${planId}`,
-		metadata: {
-			userId: userId.toString(),
-			planId: planId.toString(),
+		subscription_data: {
+			metadata: {
+				userId: userId.toString(),
+				planId: planId.toString(),
+			},
 		},
 	})
 
@@ -76,6 +89,7 @@ export const processStripeEvent = async (
 	const signature = request.headers['stripe-signature']
 
 	if (!signature) {
+		console.error('Missing signature', request.headers)
 		return response.status(400).send('Missing signature')
 	}
 
@@ -86,6 +100,11 @@ export const processStripeEvent = async (
 			process.env.STRIPE_ENDPOINT_SECRET ?? '',
 		)
 	} catch {
+		console.error(
+			'Webhook signature verification failed',
+			request.rawBody,
+			signature,
+		)
 		return response.status(400).send('Webhook signature verification failed')
 	}
 
@@ -177,6 +196,7 @@ async function handleSubscriptionEvent(
 
 	const userId = Number(subscription.metadata.userId)
 	const planId = Number(subscription.metadata.planId)
+	console.log(subscription.metadata)
 	const subscriptionPlan = userPlans.find((plan) => plan.id === planId)!
 	const expiresAt = new Date(subscription.current_period_end * 1000)
 	const amount = String(subscriptionPlan.price * 100)

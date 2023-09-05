@@ -91,6 +91,13 @@ class User {
 		if (settings.stripeCustomerId && settings.stripeCustomerId !== '') {
 			await redisClient.set(`user:stripe:${settings.stripeCustomerId}`, this.id)
 		}
+
+		if (settings.devStripeCustomerId && settings.devStripeCustomerId !== '') {
+			await redisClient.set(
+				`user:stripe:${settings.devStripeCustomerId}`,
+				this.id,
+			)
+		}
 	}
 
 	async checkGoogleTokenAndGet(): Promise<UserSettings> {
@@ -134,7 +141,7 @@ class User {
 
 	async findByStripeCustomerId(customerId: string): Promise<UserSettings> {
 		const user = await redisClient.get(`user:stripe:${customerId}`)
-		if (!user) throw new Error('User not found')
+		if (!user) throw new Error('[findByStripeCustomerId] User not found')
 
 		this.id = Number(user)
 		const data = await this.get()
