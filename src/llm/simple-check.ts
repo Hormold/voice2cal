@@ -12,7 +12,7 @@ import { JsonOutputFunctionsParser } from 'langchain/output_parsers'
 
 const zodSchema = z.object({
 	isEvent: z.boolean(),
-	lang: z.string(),
+	// Future idea :? lang: z.string(),
 })
 
 const llm = new ChatOpenAI({

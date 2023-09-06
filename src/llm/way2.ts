@@ -126,7 +126,6 @@ If it not required, just extract data and return in specified format (name, desc
 
 Do not use search engine if event is private. Do not add example email to attendee if not found in contacts. IMPORTANT!
 
-
 Response ONLY in calendar format via final_output tool, respect user language.
 Current time (user timezone): {current_datetime} ({timezone})
 Location: {location}

@@ -205,11 +205,16 @@ bot.command('reset', async (ctx) => {
 bot.command('mode', async (ctx) => {
 	const buttonsForCallback = await getModeMenu(ctx)
 
-	await ctx.reply(`Please select mode`, {
-		reply_markup: {
-			inline_keyboard: buttonsForCallback,
+	await ctx.reply(
+		`Please select bot mode\nSometimes bot can do not what you expect, you should describe your event more precisely.\n
+Talk to bot like to human, for example: "Remind me about pet fair near me this weekend" (Slow, powerful mode)\n
+Or like this: "Remind me to buy milk tomorrow at 5pm" (Fast, simple mode)`,
+		{
+			reply_markup: {
+				inline_keyboard: buttonsForCallback,
+			},
 		},
-	})
+	)
 })
 
 bot.command('calendars', async (ctx) => {
