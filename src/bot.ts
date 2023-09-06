@@ -32,6 +32,7 @@ import {
 	createCustomerId,
 } from './utils/paid.js'
 import { userPlans } from './constants.js'
+import { simpleCheckIsEvent } from './llm/simple-check.js'
 
 if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY not set')
 const bot = new Bot<MyContext>(process.env.BOT_TOKEN!)
@@ -567,6 +568,12 @@ bot.on(['message:text', 'message:voice'], async (ctx) => {
 		)
 	}
 
+	if (!(await simpleCheckIsEvent(messageText))) {
+		return ctx.reply(
+			`Sorry, this message doesn't look like event, please try again!`,
+		)
+	}
+
 	await redisClient.setex(redisKey, 60 * 5, '1') // 5 minutes cache
 
 	const message = await ctx.reply(
@@ -623,7 +630,7 @@ bot.on(['message:text', 'message:voice'], async (ctx) => {
 			await ctx.api.editMessageText(
 				ctx.chat.id,
 				messageId,
-				`${previewString}\n\nEvent will be added to your calendar «${userSettings.calendarName}» in 10 seconds`,
+				`${previewString}\n\nEvent will be added to your calendar «${userSettings.calendarName}» in 15 seconds`,
 				{
 					reply_markup: {
 						inline_keyboard: [
@@ -675,7 +682,7 @@ bot.on(['message:text', 'message:voice'], async (ctx) => {
 						},
 					},
 				)
-			}, 10_000)
+			}, 15_000)
 		}
 	} catch (error: any) {
 		await ctx.api.editMessageText(

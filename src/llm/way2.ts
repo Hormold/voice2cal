@@ -14,11 +14,16 @@ import { PromptTemplate } from 'langchain/prompts'
 import { initializeAgentExecutorWithOptions } from 'langchain/agents'
 import { BufferMemory } from 'langchain/memory'
 import { RedisChatMessageHistory } from 'langchain/stores/message/ioredis'
-import { type runFormat, zodSchema, contactsSchema } from '../types.js'
+import { type runFormat, type UserSettings } from '../types.js'
+import { zodSchema, contactsSchema } from '../constants.js'
 import { currentDT } from '../utils/functions.js'
 import { getContacts, getCalendarEvents } from '../utils/google.js'
 
-const getTools = (accessToken: string, refreshToken: string) => [
+const getTools = (
+	accessToken: string,
+	refreshToken: string,
+	settings: UserSettings,
+) => [
 	new Calculator(),
 	new BingSerpAPI(process.env.BING_KEY),
 	new DynamicStructuredTool({
@@ -34,9 +39,17 @@ const getTools = (accessToken: string, refreshToken: string) => [
 		description: 'get future events from calendar',
 		async func() {
 			try {
-				const events = await getCalendarEvents(accessToken, refreshToken)
+				const events = (await getCalendarEvents(
+					accessToken,
+					settings.calendarId!,
+					false,
+				)) as string[]
+				if (!events || typeof events === 'string') {
+					return 'No calendar access'
+				}
+
 				return (
-					events?.filter((event) => event !== '').join('\n') ||
+					events?.filter((event: string) => event !== '').join('\n') ||
 					'No upcoming events found.'
 				)
 			} catch {
@@ -102,19 +115,23 @@ const model2 = new ChatOpenAI({
 	},
 })
 
-const promptTemplate = PromptTemplate.fromTemplate(`
-Your task is to extract the meta data for the user INPUT and response ONLY with valid final_output tool.
-User can ask to remind private event, like meeting, hospital visit etc. Or public event like car show, concert, etc.
-If the looks like a public event (or user mention venue), you should find out the place or event (in search engine, using English), time, date, name, etc.
-If user mention someone and it looks like a contact, you should find out the contact (using find_contacts, using user language) and save use as attendee only if found in output
+const promptTemplate =
+	PromptTemplate.fromTemplate(`IMPORTANT: your task is create event in calendar about subject in user input.
+And your task is to extract the meta data from user INPUT text and response ONLY with valid final_output tool.
+User can mention private event, like meeting, hospital visit or public event like car show, concert, etc.
+If the looks like a public event and user ask to remaind about certain public event (or user mention venue), you should find out the place or event (in search engine, using English), time, date, name, etc.
+Do not look for search engine if event is private! IMPORTANT!
+If user mention someone and it looks like a contact, you should find out the contact (using find_contacts, using user language) and save use as attendee ONLY IF found in output! IMPORTANT!
 If it not required, just extract data and return in specified format (name, description on user language)
 
-Response ONLY in calendar format via generate_calendar_event tool strictly in valid json, in user language.
-Current time (user timezone): {current_datetime}
-User Location: {location}
-User time zone: {timezone}
-User language: {lang}
-User input: {question}`)
+Do not use search engine if event is private. Do not add example email to attendee if not found in contacts. IMPORTANT!
+
+
+Response ONLY in calendar format via final_output tool, respect user language.
+Current time (user timezone): {current_datetime} ({timezone})
+Location: {location}
+Language: {lang}
+User Input: {question}`)
 
 const runWay2 = async ({
 	chatId,
@@ -131,7 +148,11 @@ const runWay2 = async ({
 	})
 
 	const executor = await initializeAgentExecutorWithOptions(
-		getTools(userSettings.googleAccessToken!, userSettings.googleRefreshToken!),
+		getTools(
+			userSettings.googleAccessToken!,
+			userSettings.googleRefreshToken!,
+			userSettings,
+		),
 		model2,
 		{
 			agentType: 'structured-chat-zero-shot-react-description',

@@ -8,7 +8,8 @@ import {
 	HumanMessagePromptTemplate,
 } from 'langchain/prompts'
 import { JsonOutputFunctionsParser } from 'langchain/output_parsers'
-import { type runFormat, zodSchema } from '../types.js'
+import { type runFormat } from '../types.js'
+import { zodSchema } from '../constants.js'
 import { currentDT } from '../utils/functions.js'
 
 const prompt = new ChatPromptTemplate({

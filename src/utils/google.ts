@@ -124,7 +124,7 @@ export const getCalendarEvents = async (
 		const events = result.data.items
 		if (!events || events.length === 0) {
 			console.log('No upcoming events found.')
-			return
+			return []
 		}
 
 		if (isRaw) return events
