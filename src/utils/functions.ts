@@ -1,10 +1,16 @@
 /* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/naming-convention */
+import crypto from 'node:crypto'
+import { type InlineKeyboardButton } from "grammy/types"
 import { type Plan, type CalendarEvent, type UserSettings } from '../types.js'
 import { userPlans } from '../constants.js'
 import User from './user-manager.js'
 import { getAllCalendars } from './google.js'
+
+export const md5 = (string: string) => {
+	return crypto.createHash('md5').update(string).digest('hex')
+}
 
 export const buildPreviewString = (event: CalendarEvent, userTimeZone?: string) => {
 	const { summary, description, location, start, end, recurrence } = event
@@ -160,7 +166,7 @@ export const getPlansMenu = (userPlan: Plan, userSettings: UserSettings) => {
 				callback_data: `plan:${plan.id} `,
 			},
 		]
-	})
+	}) as InlineKeyboardButton[][]
 
 	if (userPlan.id > 1) {
 		buttonsForCallback.push([
@@ -168,6 +174,11 @@ export const getPlansMenu = (userPlan: Plan, userSettings: UserSettings) => {
 				text: (userSettings.autoRenewEnabled ? `🔙 Cancel next payment` : `🔙 Enable auto renew`),
 				callback_data: `cancelPayment`,
 			},
+		], [
+			{
+				text: 'Manage Stripe Subscription',
+				url: `https://stripe.gptask.io/p/login/14k7sI0070xffrG5kk`,
+			}
 		]);
 	}
 

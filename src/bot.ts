@@ -22,6 +22,7 @@ import {
 	getCalendarMenu,
 	getModeMenu,
 	getPlansMenu,
+	md5,
 } from './utils/functions.js'
 import { type GeoData, type CalendarEvent, type MyContext } from './types.js'
 import redisClient from './utils/redis.js'
@@ -530,7 +531,7 @@ bot.on(['message:text', 'message:voice'], async (ctx) => {
 	if ((!messageText || messageText.length === 0) && ctx.message.voice) {
 		if (!plan?.voiceMessages) {
 			return ctx.reply(
-				`Sorry, voice messages not allowed for your plan, please upgrade your plan to continue using bot`,
+				`Sorry, voice messages not allowed for your plan, please upgrade your plan to continue using bot: /subscribe`,
 			)
 		}
 
@@ -556,6 +557,17 @@ bot.on(['message:text', 'message:voice'], async (ctx) => {
 	if (!messageText) {
 		return ctx.reply(`Message is empty, please try again!`)
 	}
+
+	// Check is message is exsist in redis
+	const redisKey = `message:${ctx.chat.id}:${md5(String(messageText))}`
+	const redisResult = await redisClient.get(redisKey)
+	if (redisResult) {
+		return ctx.reply(
+			`Maybe it's a duplicate of this message you sent before or just telegram bug, please try again!`,
+		)
+	}
+
+	await redisClient.setex(redisKey, 60 * 5, '1') // 5 minutes cache
 
 	const message = await ctx.reply(
 		`Processing started, it can take up to few minutes.\nText: ${messageText}`,
