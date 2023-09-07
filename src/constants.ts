@@ -4,6 +4,15 @@ import { type Plan } from './types.js'
 
 const isDev = process.env.NODE_ENV === 'development'
 
+export const commands = {
+	login: '👤 Login to Google Account',
+	calendars: '📅 Select calendar',
+	reset: '🔧 Reset Google Account',
+	mode: '🔧 Select mode (GPT-3.5 or GPT-4)',
+	subscribe: '🔧 Subscribe to PRO plans',
+	events: '📅 Show 20 upcoming events',
+}
+
 export const userPlans = [
 	{
 		id: 1,

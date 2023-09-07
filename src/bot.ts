@@ -6,46 +6,30 @@ import type { ReadStream } from 'node:fs'
 import process from 'node:process'
 import { Bot } from 'grammy'
 import got from 'got'
-import {
-	addCalendarEvent,
-	getAllCalendars,
-	cancelGoogleEvent,
-	googleLogin,
-	getCalendarEvents,
-} from './utils/google.js'
+import { addCalendarEvent, cancelGoogleEvent } from './utils/google.js'
 import runWay2 from './llm/way2.js'
 import runWay1 from './llm/way1.js'
 import getOpenAiClient from './utils/openai.js'
 import User from './utils/user-manager.js'
-import {
-	buildPreviewString,
-	getCalendarMenu,
-	getModeMenu,
-	getPlansMenu,
-	md5,
-} from './utils/functions.js'
+import { buildPreviewString, md5 } from './utils/functions.js'
 import { type GeoData, type CalendarEvent, type MyContext } from './types.js'
 import redisClient from './utils/redis.js'
-import {
-	generateStripeLink,
-	cancelNextPayment,
-	createCustomerId,
-} from './utils/paid.js'
-import { userPlans } from './constants.js'
 import { simpleCheckIsEvent } from './llm/simple-check.js'
+import {
+	subscribeCommand,
+	subscribeCallback,
+	cancelSubscriptionCommand,
+} from './commands/subscribe.js'
+import giftCommand from './commands/gift.js'
+import { modeCommand, modeCallback } from './commands/mode.js'
+import resetCommand from './commands/reset.js'
+import { calendarsCallback, calendarsCommand } from './commands/calendars.js'
+import loginCommand from './commands/login.js'
+import eventsCommand from './commands/events.js'
+import helpCommand from './commands/help.js'
 
 if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY not set')
 const bot = new Bot<MyContext>(process.env.BOT_TOKEN!)
-const isDev = process.env.NODE_ENV === 'development'
-
-const commands = {
-	login: '👤 Login to Google Account',
-	calendars: '📅 Select calendar',
-	reset: '🔧 Reset Google Account',
-	mode: '🔧 Select mode (GPT-3.5 or GPT-4)',
-	subscribe: '🔧 Subscribe to PRO plans',
-	events: '📅 Show 20 upcoming events',
-}
 
 bot.use(async (ctx, next) => {
 	if (ctx.chat?.type === 'private' && ctx.from) {
@@ -83,259 +67,18 @@ bot.catch(async (error) => {
 	console.log(`Error: ${error.message}`)
 })
 
-bot.command(['help', 'start'], async (ctx) => {
-	const user = new User(ctx.from!)
-	const userSettings = await user.get()
-
-	let personalData = [] as string[]
-
-	if (userSettings.googleAccessToken) {
-		let modelName = 'GPT-4 + GPT-3.5'
-		if (userSettings.modeId === 1) {
-			modelName = userSettings.planId > 1 ? 'GPT-4' : 'GPT-3.5'
-		}
-
-		personalData = [
-			`👤 Logged in as ${userSettings.googleUserInfo?.name} (${userSettings.googleUserInfo?.email})`,
-			`📅 Calendar: ${userSettings.calendarName}`,
-			`📍 Location: ${userSettings.cityName}, ${userSettings.countyName}`,
-			`⏰ Timezone: ${userSettings.timeZone}`,
-			// Mode
-			`🔧 Speed: ${userSettings.modeId! < 2 ? 'Fast+Simple' : 'Slow+Powerful'}`,
-			`🤖 Model: ${modelName}`,
-		]
-
-		const userPlan = user.getUserPlan()
-		if (userPlan) {
-			const resetInDays = Math.ceil(
-				(userSettings.subscriptionExpiresAt - Date.now()) / 1000 / 60 / 60 / 24,
-			)
-			personalData.push(
-				`📊 Plan: ${userPlan.name}, usage ${userSettings.botUsage}/${userPlan.messagesPerMonth}. Reset in ${resetInDays} days`,
-			)
-		}
-	}
-
-	const header = `This bot can help you to manage your calendar using text/voice messages`
-	const commandstr = Object.entries(commands)
-		.map(([command, description]) => `/${command} - ${description}`)
-		.join('\n')
-
-	await ctx.reply(`${header}\n\n${personalData.join('\n')}\n\n${commandstr}`)
-})
-
-bot.command('gift', async (ctx) => {
-	if (ctx.from?.id !== Number(process.env.ADMIN_ID)) {
-		await bot.api.sendMessage(
-			Number(process.env.ADMIN_ID),
-			`User ${ctx.from?.id} trying to use gift command`,
-		)
-		return ctx.reply(`Sorry, this command only for admin`)
-	}
-
-	const [_, userId, planId] = ctx.message!.text.split(' ')
-	const user = new User({ id: Number(userId) })
-	await user.get()
-	const plan = userPlans.find((plan) => plan.id === Number(planId))
-	if (!plan) {
-		return ctx.reply(`Plan not found`)
-	}
-
-	await user.set({
-		planId: plan.id,
-		subscriptionExpiresAt: Date.now() + plan.period,
-		subscriptionStartedAt: Date.now(),
-	})
-
-	await ctx.reply(`Plan #${plan.id} activated for user ${userId}`)
-})
-
-bot.command('subscribe', async (ctx) => {
-	const user = new User(ctx.from!)
-	const userSettings = await user.get()
-	const userPlan = user.getUserPlan()
-	const currentPlan = `${userPlan?.name} (${userSettings.botUsage}/${userPlan?.messagesPerMonth})	message per 30 days`
-	const resetInDays = Math.ceil(
-		(userSettings.subscriptionExpiresAt - Date.now()) / 1000 / 60 / 60 / 24,
-	)
-	const autoRenewEnabled =
-		userPlan.id > 1 && userSettings.autoRenewEnabled
-			? '✅ Enabled'
-			: '❌ Disabled'
-
-	const rows = [
-		`Your current plan: ${currentPlan}`,
-		`Next reset/payment: ${resetInDays} days`,
-		`Auto renew: ${autoRenewEnabled}`,
-		'',
-		'',
-	]
-
-	for (const plan of userPlans) {
-		rows.push(
-			`📊 ${plan.name} (${plan.price} USD)`,
-			`📊 ${plan.messagesPerMonth} messages per 30 days`,
-			`📊 ${plan.fastMode ? '✅ GPT-4 Included' : '❌ No GPT-4 Mode'}`,
-			`📊 ${plan.voiceMessages ? '✅ Voice messages' : '❌ No voice messages'}`,
-			'',
-		)
-	}
-
-	await ctx.reply(`${rows.join('\n')}\n\nPlease select plan`, {
-		reply_markup: {
-			inline_keyboard: getPlansMenu(userPlan, userSettings),
-		},
-	})
-})
-
-bot.command('reset', async (ctx) => {
-	const user = new User(ctx.from!)
-	await user.set({
-		googleAccessToken: '',
-		googleRefreshToken: '',
-		googleExpiresAt: null,
-		calendarId: 'primary',
-		calendarName: 'Primary',
-		googleUserInfo: {},
-	})
-
-	await ctx.reply('Google Account reseted, please login again using /login')
-})
-
-bot.command('mode', async (ctx) => {
-	const buttonsForCallback = await getModeMenu(ctx)
-
-	await ctx.reply(
-		`Please select bot mode\nSometimes bot can do not what you expect, you should describe your event more precisely.\n
-Talk to bot like to human, for example: "Remind me about pet fair near me this weekend" (Slow, powerful mode)\n
-Or like this: "Remind me to buy milk tomorrow at 5pm" (Fast, simple mode)`,
-		{
-			reply_markup: {
-				inline_keyboard: buttonsForCallback,
-			},
-		},
-	)
-})
-
-bot.command('calendars', async (ctx) => {
-	const buttonsForCallback = await getCalendarMenu(ctx)
-	if (buttonsForCallback.length === 0) {
-		return ctx.reply(`Please login to your Google Account first -> /login`)
-	}
-
-	await ctx.reply(`Please select calendar`, {
-		reply_markup: {
-			inline_keyboard: buttonsForCallback,
-		},
-	})
-})
-
-bot.command('events', async (ctx) => {
-	const user = new User(ctx.from!)
-	const userSettings = await user.checkGoogleTokenAndGet()
-
-	const allEvents = (await getCalendarEvents(
-		userSettings.googleAccessToken!,
-		userSettings.calendarId!,
-		true,
-	)) as CalendarEvent[]
-
-	let eventString = ''
-	for (const event of allEvents) {
-		eventString += buildPreviewString(event, userSettings.timeZone!) + '\n\n'
-	}
-
-	await ctx.reply(`Found ${allEvents.length} events:\n\n${eventString}`)
-})
-
-bot.callbackQuery(/cancelPayment/, async (ctx) => {
-	const user = new User(ctx.from)
-	const userSettings = await user.get()
-	await ctx.editMessageText(
-		userSettings.autoRenewEnabled
-			? 'Auto renew disabled'
-			: 'Auto renew enabled',
-	)
-	await user.set({
-		autoRenewEnabled: !userSettings.autoRenewEnabled,
-	})
-	await cancelNextPayment(ctx.from.id)
-})
-
-bot.callbackQuery(/plan:(.+)/, async (ctx) => {
-	const user = new User(ctx.from)
-	const planId = Number(ctx.match[1])
-	const userSettings = await user.get()
-
-	if (userSettings.planId === planId) {
-		return ctx.editMessageText(`You already have this plan`)
-	}
-
-	const plan = userPlans.find((plan) => plan.id === planId)
-	if (!plan) {
-		return ctx.editMessageText(`Plan not found`)
-	}
-
-	if (plan.id < userSettings.planId) {
-		return ctx.editMessageText(
-			`You can't downgrade your plan, it be downgraded automatically after current plan expires`,
-		)
-	}
-
-	let customerId
-
-	if (isDev) {
-		customerId = userSettings.devStripeCustomerId
-		if (!customerId) {
-			customerId = await createCustomerId(
-				ctx.from.id,
-				ctx.from.username!,
-				ctx.from.first_name,
-				ctx.from.last_name!,
-			)
-			await user.set({
-				devStripeCustomerId: customerId,
-			})
-		}
-	} else {
-		customerId = userSettings.stripeCustomerId
-		if (!customerId) {
-			customerId = await createCustomerId(
-				ctx.from.id,
-				ctx.from.username!,
-				ctx.from.first_name,
-				ctx.from.last_name!,
-			)
-			await user.set({
-				stripeCustomerId: customerId,
-			})
-		}
-	}
-
-	const stripeLink = await generateStripeLink(
-		ctx.from.id,
-		String(customerId),
-		planId,
-	)
-	if (!stripeLink) {
-		return ctx.editMessageText(
-			`Sorry, something went wrong, please try again later`,
-		)
-	}
-
-	await ctx.editMessageText(`Please pay ${plan.price} USD to continue`, {
-		reply_markup: {
-			inline_keyboard: [
-				[
-					{
-						text: 'Pay with Stripe',
-						url: stripeLink,
-					},
-				],
-			],
-		},
-	})
-})
+bot.command(['help', 'start'], helpCommand)
+bot.command('gift', giftCommand)
+bot.command('subscribe', subscribeCommand)
+bot.command('mode', modeCommand)
+bot.command('reset', resetCommand)
+bot.command('calendars', calendarsCommand)
+bot.command('login', loginCommand)
+bot.callbackQuery(/calendar:(.+)/, calendarsCallback)
+bot.callbackQuery(/mode:(.+)/, modeCallback)
+bot.callbackQuery(/plan:(.+)/, subscribeCallback)
+bot.command('events', eventsCommand)
+bot.callbackQuery(/cancelPayment/, cancelSubscriptionCommand)
 
 bot.callbackQuery('decline', async (ctx) => {
 	await ctx.editMessageText(`Ok, this event not be added to your calendar`, {
@@ -344,26 +87,6 @@ bot.callbackQuery('decline', async (ctx) => {
 		},
 	})
 	await redisClient.setex(`decline:${ctx.from.id}`, 60, 'decline')
-})
-
-bot.callbackQuery(/mode:(.+)/, async (ctx) => {
-	const user = new User(ctx.from)
-	await user.get()
-	const mode = Number(ctx.match[1])
-	const userPlan = user.getUserPlan()
-	if (userPlan.fastMode && mode === 2) {
-		return ctx.reply(`Sorry, this feature is available only for Ultra users`)
-	}
-
-	await user.set({
-		modeId: Number(mode),
-	})
-
-	await ctx.editMessageText(`Please select mode`, {
-		reply_markup: {
-			inline_keyboard: await getModeMenu(ctx),
-		},
-	})
 })
 
 bot.callbackQuery(/cancel:(.+)/, async (ctx) => {
@@ -393,68 +116,6 @@ bot.callbackQuery(/cancel:(.+)/, async (ctx) => {
 		console.log(error)
 		await ctx.reply(`Problem with canceling event, please try again!`)
 	}
-})
-
-bot.callbackQuery(/calendar:(.+)/, async (ctx) => {
-	const user = new User(ctx.from)
-	const calendarId = ctx.match[1]
-	const userSettings = await user.get()
-	const [calendars, newAccessToken] = await getAllCalendars(
-		userSettings.googleAccessToken!,
-		userSettings.googleRefreshToken!,
-	)
-
-	if (!calendars) {
-		return
-	}
-
-	if (newAccessToken && newAccessToken !== userSettings.googleAccessToken) {
-		await user.set({
-			googleAccessToken: newAccessToken,
-		})
-		console.log(`Token refreshed for user ${ctx.from.id}`)
-	}
-
-	const targetCalendar = calendars.find(
-		(calendar) => calendar?.id === calendarId,
-	)
-
-	if (!targetCalendar) {
-		await ctx.reply(`Calendar not found`)
-		return
-	}
-
-	await user.set({
-		calendarId,
-		calendarName: targetCalendar.summary!,
-	})
-
-	const buttonsForCallback = await getCalendarMenu(ctx)
-
-	await ctx.editMessageText(`Please select calendar`, {
-		reply_markup: {
-			inline_keyboard: buttonsForCallback,
-		},
-	})
-})
-
-bot.command('login', async (ctx) => {
-	const authUrl = googleLogin(ctx.from!.id)
-	await ctx.reply(
-		`Please login to your Google Account, if you want to manage your calendar (If you want to change account, please use /reset before)`,
-		{
-			reply_markup: {
-				inline_keyboard: [
-					[
-						{
-							text: 'Login via Google',
-							url: authUrl,
-						},
-					],
-				],
-			},
-		},
-	)
 })
 
 bot.on('message:location', async (ctx) => {

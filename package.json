@@ -30,6 +30,7 @@
     "@google-cloud/pubsub": "^4.0.2",
     "@google-cloud/translate": "^8.0.1",
     "@grammyjs/auto-retry": "^1.1.1",
+    "@grammyjs/conversations": "^1.1.2",
     "@grammyjs/i18n": "^1.0.1",
     "@grammyjs/ratelimiter": "^1.2.0",
     "@grammyjs/storage-redis": "^2.3.1",
