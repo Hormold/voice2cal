@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable n/file-extension-in-import */
 import process from 'node:process'
+import { zodToJsonSchema } from 'zod-to-json-schema'
 import { Calculator } from 'langchain/tools/calculator'
 import {
 	BingSerpAPI,
@@ -12,8 +13,6 @@ import {
 import { ChatOpenAI } from 'langchain/chat_models/openai'
 import { PromptTemplate } from 'langchain/prompts'
 import { initializeAgentExecutorWithOptions } from 'langchain/agents'
-import { BufferMemory } from 'langchain/memory'
-import { RedisChatMessageHistory } from 'langchain/stores/message/ioredis'
 import { type runFormat, type UserSettings } from '../types.js'
 import { zodSchema, contactsSchema } from '../constants.js'
 import { currentDT } from '../utils/functions.js'
@@ -116,23 +115,20 @@ const model2 = new ChatOpenAI({
 })
 
 const promptTemplate =
-	PromptTemplate.fromTemplate(`IMPORTANT: your task is create event in calendar about subject in user input.
-And your task is to extract the meta data from user INPUT text and response ONLY with valid final_output tool.
+	PromptTemplate.fromTemplate(`IMPORTANT: your main task is return final_output with parsed data from user input.
+And your in process you need to extract the meta data from user INPUT text and response ONLY with valid final_output tool.
 User can mention private event, like meeting, hospital visit or public event like car show, concert, etc.
 If the looks like a public event and user ask to remaind about certain public event (or user mention venue), you should find out the place or event (in search engine, using English), time, date, name, etc.
-Do not look for search engine if event is private! IMPORTANT!
+Do not look for search engine if event is private! IMPORTANT!{ui}
 If user mention someone and it looks like a contact, you should find out the contact (using find_contacts, using user language) and save use as attendee ONLY IF found in output! IMPORTANT!
-If it not required, just extract data and return in specified format (name, description on user language)
 
 Do not use search engine if event is private. Do not add example email to attendee if not found in contacts. IMPORTANT!
 
-Response ONLY in calendar format via final_output tool, respect user language.
 Current time (user timezone): {current_datetime} ({timezone})
 Location: {location}
-Language: {lang}
+Respect user language: {lang}
 User Input: {question}
-Additional information: {ui}
-!!!IMPORTANT: final response only is final_output!!!`)
+!!!IMPORTANT: final response only is final_output!!! Response ONLY in calendar format via final_output tool!`)
 
 const runWay2 = async ({
 	chatId,
@@ -140,14 +136,6 @@ const runWay2 = async ({
 	messageText,
 	userLang,
 }: runFormat): Promise<string | any> => {
-	const memory = new BufferMemory({
-		chatHistory: new RedisChatMessageHistory({
-			sessionId: chatId,
-			sessionTTL: 300, // 5 minutes, omit this parameter to make sessions never expire
-			url: process.env.KV_URL, // Default value, override with your own instance's URL
-		}),
-	})
-
 	const executor = await initializeAgentExecutorWithOptions(
 		getTools(
 			userSettings.googleAccessToken!,
@@ -158,7 +146,6 @@ const runWay2 = async ({
 		{
 			agentType: 'structured-chat-zero-shot-react-description',
 			verbose: true,
-			// Not workung: memory,
 		},
 	)
 
@@ -168,7 +155,9 @@ const runWay2 = async ({
 		lang: userLang || 'en-US',
 		question: messageText,
 		current_datetime: currentDT(userSettings.timeZone!),
-		ui: userSettings.customInstructions || 'No instructions',
+		ui: userSettings.customInstructions
+			? `\n${userSettings.customInstructions}\n`
+			: '',
 	})
 
 	try {

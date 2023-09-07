@@ -75,7 +75,6 @@ async function dataConversation(conversation: MyConversation, ctx: MyContext) {
 		await user.set({ customInstructions: message.text })
 		await ctx.reply(
 			`Ok, i will remember that.\n\nYour instructions:\n${message.text}`,
-			MainButtons,
 		)
 	}
 }

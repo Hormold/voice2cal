@@ -7,6 +7,8 @@ import {
   type ConversationFlavor,
 } from "@grammyjs/conversations"
 import Stripe from 'stripe'
+import { type Update } from 'grammy/types'
+
 
 export type UserSettings = {
 	id: number,
@@ -89,3 +91,15 @@ export type Plan = {
 
 export type Subscription = Stripe.Subscription
 export type Invoice = Stripe.Invoice
+
+export type PubSubEvent = {
+	message: {
+		data: string
+	}
+}
+
+export type Payload = {
+	update: Update
+}
+
+export type GrammyUpdate = Update

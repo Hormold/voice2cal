@@ -20,7 +20,6 @@ const helpCommand = async (ctx: CommandContext<MyContext>) => {
 			`📅 Calendar: ${userSettings.calendarName}`,
 			`📍 Location: ${userSettings.cityName}, ${userSettings.countyName}`,
 			`⏰ Timezone: ${userSettings.timeZone}`,
-			// Mode
 			`🔧 Speed: ${userSettings.modeId! < 2 ? 'Fast+Simple' : 'Slow+Powerful'}`,
 			`🤖 Model: ${modelName}`,
 		]

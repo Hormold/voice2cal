@@ -1,8 +1,10 @@
 import process from 'node:process'
-import { type Buffer } from 'node:buffer'
+import { Buffer } from 'node:buffer'
 import express from 'express'
-import { webhookCallback } from 'grammy'
 import functions from '@google-cloud/functions-framework'
+import { webhookCallback } from 'grammy'
+import { type Update } from 'grammy/types'
+import { type PubSubEvent, type Payload } from './types.js'
 import {
 	getAccessToken,
 	getGoogleId,
@@ -105,5 +107,28 @@ app.get('/stripe/return/:status', async (request, response) => {
 })
 
 functions.http('handleTelegramWebhook', app)
+
+functions.cloudEvent<PubSubEvent>('handleOpenAIRequest', async (event) => {
+	if (event?.data?.message) {
+		const json = Buffer.from(
+			String(event.data.message.data),
+			'base64',
+		).toString()
+
+		console.info(`Received event: ${json}`)
+
+		if (!json) {
+			console.error('Invalid JSON')
+			return
+		}
+
+		try {
+			const data = JSON.parse(json) as Payload
+			await bot.handleUpdate({ ...data.update } as Update)
+		} catch (error: unknown) {
+			console.error(error)
+		}
+	}
+})
 
 export default app

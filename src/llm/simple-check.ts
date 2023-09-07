@@ -51,5 +51,11 @@ export const simpleCheckIsEvent = async (
 		inputText: messageText,
 	})) as { isEvent: boolean; lang: string }
 
+	console.log(
+		`[simpleCheckIsEvent] response: ${JSON.stringify(
+			response,
+		)} to message: ${messageText}`,
+	)
+
 	return response.isEvent
 }
