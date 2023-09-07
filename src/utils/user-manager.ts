@@ -36,6 +36,7 @@ class User {
 		devStripeCustomerId: '',
 		subscriptionStartedAt: Date.now(),
 		subscriptionExpiresAt: Date.now() + 1000 * 60 * 60 * 24 * 30,
+		customInstructions: '',
 	}
 
 	settings: UserSettings = this.defaultSettings

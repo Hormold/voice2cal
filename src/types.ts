@@ -2,7 +2,10 @@ import { oauth2_v2 } from "googleapis/build/src/apis/oauth2/v2";
 import { people_v1 } from "googleapis/build/src/apis/people/v1";
 import { calendar_v3 } from "googleapis/build/src/apis/calendar/v3";
 import { User as TelegramUser } from 'grammy/types'
-import { type Context } from 'grammy'
+import { type Context, SessionFlavor } from 'grammy'
+import {
+  type ConversationFlavor,
+} from "@grammyjs/conversations"
 import Stripe from 'stripe'
 
 export type UserSettings = {
@@ -31,6 +34,7 @@ export type UserSettings = {
 	devStripeSubscriptionId?: string,
 	subscriptionStartedAt: number,
 	subscriptionExpiresAt: number,
+	customInstructions?: string,
 }
 
 export type runFormat = {
@@ -64,7 +68,11 @@ interface BotContext {
 	userSettings: UserSettings;
 }
 
-export type MyContext = Context & {
+interface SessionData {
+	userId: number;
+}
+
+export type MyContext = Context & ConversationFlavor & SessionFlavor<SessionData> & {
 	config: BotContext;
 };
 

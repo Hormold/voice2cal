@@ -4,8 +4,10 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import type { ReadStream } from 'node:fs'
 import process from 'node:process'
-import { Bot } from 'grammy'
+import { Bot, session } from 'grammy'
 import got from 'got'
+import { conversations, createConversation } from '@grammyjs/conversations'
+import { RedisAdapter } from '@grammyjs/storage-redis'
 import { addCalendarEvent, cancelGoogleEvent } from './utils/google.js'
 import runWay2 from './llm/way2.js'
 import runWay1 from './llm/way1.js'
@@ -27,9 +29,26 @@ import { calendarsCallback, calendarsCommand } from './commands/calendars.js'
 import loginCommand from './commands/login.js'
 import eventsCommand from './commands/events.js'
 import helpCommand from './commands/help.js'
+import {
+	dataCommand,
+	dataConversation,
+	dataExitConversation,
+	dataResetPrompt,
+} from './commands/data.js'
 
 if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY not set')
 const bot = new Bot<MyContext>(process.env.BOT_TOKEN!)
+
+const storage = new RedisAdapter({ instance: redisClient })
+
+bot.use(
+	session({
+		initial: () => ({}),
+		storage,
+	}),
+)
+bot.use(conversations())
+bot.use(createConversation(dataConversation, 'data-conversation'))
 
 bot.use(async (ctx, next) => {
 	if (ctx.chat?.type === 'private' && ctx.from) {
@@ -74,11 +93,14 @@ bot.command('mode', modeCommand)
 bot.command('reset', resetCommand)
 bot.command('calendars', calendarsCommand)
 bot.command('login', loginCommand)
+bot.command('data', dataCommand)
 bot.callbackQuery(/calendar:(.+)/, calendarsCallback)
 bot.callbackQuery(/mode:(.+)/, modeCallback)
 bot.callbackQuery(/plan:(.+)/, subscribeCallback)
 bot.command('events', eventsCommand)
 bot.callbackQuery(/cancelPayment/, cancelSubscriptionCommand)
+bot.callbackQuery(/exitConversation/, dataExitConversation)
+bot.callbackQuery(/dataResetPrompt/, dataResetPrompt)
 
 bot.callbackQuery('decline', async (ctx) => {
 	await ctx.editMessageText(`Ok, this event not be added to your calendar`, {
@@ -149,7 +171,6 @@ bot.on('message:location', async (ctx) => {
 			messageId,
 			`Great @${ctx.from.username}, your location is set to ${city}, ${state}`,
 		)
-		console.log(data)
 	} catch (error) {
 		console.log(error)
 		await ctx.reply(`Problem with location, please try again later!`)

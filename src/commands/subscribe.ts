@@ -1,17 +1,14 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import process from 'node:process'
 import { type CallbackQueryContext, type CommandContext } from 'grammy'
 import User from '../utils/user-manager.js'
 import { getPlansMenu } from '../utils/functions.js'
-import { userPlans } from '../constants.js'
+import { userPlans, isDev } from '../constants.js'
 import { type MyContext } from '../types.js'
 import {
 	cancelNextPayment,
 	createCustomerId,
 	generateStripeLink,
 } from '../utils/paid.js'
-
-const isDev = process.env.NODE_ENV === 'development'
 
 const subscribeCommand = async (ctx: CommandContext<MyContext>) => {
 	const user = new User(ctx.from!)

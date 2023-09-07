@@ -2,7 +2,7 @@ import process from 'node:process'
 import { z } from 'zod'
 import { type Plan } from './types.js'
 
-const isDev = process.env.NODE_ENV === 'development'
+export const isDev = process.env.NODE_ENV === 'development'
 
 export const commands = {
 	login: '👤 Login to Google Account',
