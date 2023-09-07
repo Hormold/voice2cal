@@ -130,7 +130,9 @@ Response ONLY in calendar format via final_output tool, respect user language.
 Current time (user timezone): {current_datetime} ({timezone})
 Location: {location}
 Language: {lang}
-User Input: {question}`)
+User Input: {question}
+Additional information: {ui}
+!!!IMPORTANT: final response only is final_output!!!`)
 
 const runWay2 = async ({
 	chatId,
@@ -156,7 +158,7 @@ const runWay2 = async ({
 		{
 			agentType: 'structured-chat-zero-shot-react-description',
 			verbose: true,
-			memory,
+			// Not workung: memory,
 		},
 	)
 
@@ -166,6 +168,7 @@ const runWay2 = async ({
 		lang: userLang || 'en-US',
 		question: messageText,
 		current_datetime: currentDT(userSettings.timeZone!),
+		ui: userSettings.customInstructions || 'No instructions',
 	})
 
 	try {

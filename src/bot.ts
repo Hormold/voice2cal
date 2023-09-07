@@ -43,7 +43,7 @@ const storage = new RedisAdapter({ instance: redisClient })
 
 bot.use(
 	session({
-		initial: () => ({}),
+		initial: () => ({ userId: 1 }),
 		storage,
 	}),
 )
@@ -261,7 +261,8 @@ bot.on(['message:text', 'message:voice'], async (ctx) => {
 		)
 	}
 
-	await redisClient.setex(redisKey, 60 * 5, '1') // 5 minutes cache
+	// TODO: fix it!
+	// Broken: await redisClient.setex(redisKey, 60 * 5, 'ok') // 5 minutes cache
 
 	const message = await ctx.reply(
 		`Processing started, it can take up to few minutes.\nText: ${messageText}`,

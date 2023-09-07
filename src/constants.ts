@@ -11,6 +11,7 @@ export const commands = {
 	mode: '🔧 Select mode (GPT-3.5 or GPT-4)',
 	subscribe: '🔧 Subscribe to PRO plans',
 	events: '📅 Show 20 upcoming events',
+	data: '🔧 Edit custom instructions',
 }
 
 export const userPlans = [

@@ -6,6 +6,23 @@ import User from '../utils/user-manager.js'
 
 type MyConversation = Conversation<MyContext>
 
+const MainButtons = {
+	reply_markup: {
+		inline_keyboard: [
+			[
+				{
+					text: 'Clear',
+					callback_data: 'dataResetPrompt',
+				},
+				{
+					text: 'Exit editor',
+					callback_data: 'exitConversation',
+				},
+			],
+		],
+	},
+}
+
 const dataCommand = async (ctx: CommandContext<MyContext>) => {
 	await ctx.conversation.enter('data-conversation')
 }
@@ -13,12 +30,16 @@ const dataCommand = async (ctx: CommandContext<MyContext>) => {
 const dataExitConversation = async (ctx: CallbackQueryContext<MyContext>) => {
 	await ctx.conversation.exit()
 	await ctx.answerCallbackQuery('Ok, see you later')
+	await ctx.editMessageText('Editor closed')
 }
 
 const dataResetPrompt = async (ctx: CallbackQueryContext<MyContext>) => {
 	const user = new User(ctx.from)
 	await user.set({ customInstructions: '' })
-	await ctx.answerCallbackQuery('Ok, your instructions has been reset')
+	await ctx.editMessageText(
+		`Your instructions has been reset, now you can set new ones in your next message`,
+		MainButtons,
+	)
 }
 
 async function dataConversation(conversation: MyConversation, ctx: MyContext) {
@@ -27,23 +48,8 @@ async function dataConversation(conversation: MyConversation, ctx: MyContext) {
 
 	if (userSettings.customInstructions) {
 		await ctx.reply(
-			`To edit current instruction, copy it, edit and send it back to me.\n\nYour current instructions:\n ${userSettings.customInstructions}`,
-			{
-				reply_markup: {
-					inline_keyboard: [
-						[
-							{
-								text: 'Clear',
-								callback_data: 'dataResetPrompt',
-							},
-							{
-								text: 'Exit editor',
-								callback_data: 'exitConversation',
-							},
-						],
-					],
-				},
-			},
+			`To edit current instruction, copy it, edit and send it back to me.\n\nYour current instructions:\n${userSettings.customInstructions}`,
+			MainButtons,
 		)
 	} else {
 		await ctx.reply(
@@ -68,23 +74,8 @@ async function dataConversation(conversation: MyConversation, ctx: MyContext) {
 	if (message?.text) {
 		await user.set({ customInstructions: message.text })
 		await ctx.reply(
-			`Ok, i will remember that.\n\nYour instructions:\n ${message.text}`,
-			{
-				reply_markup: {
-					inline_keyboard: [
-						[
-							{
-								text: 'Clear',
-								callback_data: 'dataResetPrompt',
-							},
-							{
-								text: 'Exit editor',
-								callback_data: 'exitConversation',
-							},
-						],
-					],
-				},
-			},
+			`Ok, i will remember that.\n\nYour instructions:\n${message.text}`,
+			MainButtons,
 		)
 	}
 }
