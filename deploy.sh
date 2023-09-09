@@ -13,16 +13,16 @@ gcloud --quiet beta functions deploy voice2cal \
   --project hormold \
   --source . 
 #&
-# gcloud --quiet beta functions deploy openai-requests \
-#  --gen2 \
-#  --entry-point handleOpenAIRequest \
-#  --trigger-topic openai-requests \
-#  --project hormold \
-#  --timeout=120s \
-#  --runtime nodejs20 \
-#  --region us-west2 \
-#  --min-instances 0 \
-#  --max-instances 3 \
-#  --env-vars-file prod.env.yaml \
-#  --source . &
-#wait
+ gcloud --quiet beta functions deploy openai-requests \
+  --gen2 \
+  --entry-point handleOpenAIRequest \
+  --trigger-topic openai-requests \
+  --project hormold \
+  --timeout=120s \
+  --runtime nodejs20 \
+  --region us-central1 \
+  --min-instances 0 \
+  --max-instances 3 \
+  --env-vars-file prod.env.yaml \
+  --source . &
+wait

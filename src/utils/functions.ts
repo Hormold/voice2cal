@@ -18,12 +18,8 @@ export const buildPreviewString = (event: CalendarEvent, userTimeZone?: string) 
 		return ''
 	}
 
-	const startDT = new Date(start.dateTime!).toLocaleString('en', {
-		timeZone: userTimeZone ?? start?.timeZone ?? 'UTC',
-	})
-	const endDT = new Date(end.dateTime!).toLocaleString('en', {
-		timeZone: userTimeZone ?? end?.timeZone ?? 'UTC',
-	})
+	const startDT = new Date(start.dateTime!).toLocaleString('en')
+	const endDT = new Date(end.dateTime!).toLocaleString('en')
 
 	const rows = [`📅 ${summary}`, `🕐 ${startDT} - ${endDT}`]
 

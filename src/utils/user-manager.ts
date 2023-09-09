@@ -114,8 +114,9 @@ class User {
 		return this.settings
 	}
 
-	async incrBotUsage() {
+	async incrBotUsage(modelName: string) {
 		await redisClient.incr(`bot:usage:${this.id}`)
+		console.log(`[BOT USAGE] ${this.id} ${modelName}`)
 	}
 
 	async resetBotUsage() {

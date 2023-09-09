@@ -110,6 +110,8 @@ const mainLogic = async (ctx: MyContext) => {
 	)
 	const messageId = message.message_id
 
+	const modelName = userSettings.modeId === 2 ? 'gpt-4' : 'gpt-3.5-turbo-0613'
+
 	try {
 		const mode = userSettings.modeId ?? 1
 		let result = await (mode === 1 ? runWay1 : runWay2)({
@@ -132,12 +134,12 @@ const mainLogic = async (ctx: MyContext) => {
 					messageText,
 					userLang,
 				},
-				'gpt-4',
+				modelName,
 				result,
 			)
 		}
 
-		await user.incrBotUsage()
+		await user.incrBotUsage(modelName)
 
 		if (typeof result === 'string') {
 			await ctx.api.editMessageText(ctx.chat.id, messageId, result)

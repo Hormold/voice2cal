@@ -3,7 +3,6 @@ import { Buffer } from 'node:buffer'
 import express from 'express'
 import functions from '@google-cloud/functions-framework'
 import { webhookCallback } from 'grammy'
-import { type Update } from 'grammy/types'
 import { type PubSubEvent, type Payload } from './types.js'
 import {
 	getAccessToken,
@@ -124,7 +123,7 @@ functions.cloudEvent<PubSubEvent>('handleOpenAIRequest', async (event) => {
 
 		try {
 			const data = JSON.parse(json) as Payload
-			await bot.handleUpdate({ ...data.update } as Update)
+			await bot.handleUpdate(data.update)
 		} catch (error: unknown) {
 			console.error(error)
 		}
