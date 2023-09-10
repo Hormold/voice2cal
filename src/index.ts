@@ -95,6 +95,7 @@ app.all(
 )
 
 app.all('/stripe/callback', processStripeEvent)
+app.all('/stripe', processStripeEvent)
 app.get('/stripe/return/:status', async (request, response) => {
 	const { userId } = request.query as { userId: string }
 	await bot.api.sendMessage(
@@ -108,13 +109,14 @@ app.get('/stripe/return/:status', async (request, response) => {
 functions.http('handleTelegramWebhook', app)
 
 functions.cloudEvent<PubSubEvent>('handleOpenAIRequest', async (event) => {
+	process.env.IN_QUEUE = 'true' // Because i don't want created separated .env yaml file for this
 	if (event?.data?.message) {
 		const json = Buffer.from(
 			String(event.data.message.data),
 			'base64',
 		).toString()
 
-		console.info(`Received event: ${json}`)
+		console.info(`Received event: ${json}`, process.env)
 
 		if (!json) {
 			console.error('Invalid JSON')
@@ -125,7 +127,7 @@ functions.cloudEvent<PubSubEvent>('handleOpenAIRequest', async (event) => {
 			const data = JSON.parse(json) as Payload
 			await bot.handleUpdate(data.update)
 		} catch (error: unknown) {
-			console.error(error)
+			console.error(`json parse/bot error`, error)
 		}
 	}
 })

@@ -43,7 +43,17 @@ if (process.env.NODE_ENV !== 'development') {
 }
 
 if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY not set')
-const bot = new Bot<MyContext>(process.env.BOT_TOKEN!)
+const bot = new Bot<MyContext>(process.env.BOT_TOKEN!, {
+	botInfo: {
+		is_bot: true,
+		id: 6_444_456_460,
+		username: String(process.env.BOT_NAME!),
+		first_name: String(process.env.BOT_NAME!),
+		can_join_groups: true,
+		can_read_all_group_messages: false,
+		supports_inline_queries: false,
+	},
+})
 
 const storage = new RedisAdapter({ instance: redisClient })
 
@@ -187,7 +197,11 @@ bot.on('message:location', async (ctx) => {
 })
 
 bot.on(['message:text', 'message:voice'], async (ctx) => {
-	/* Future if (process.env.NODE_ENV !== 'development' && topic) {
+	if (
+		process.env.NODE_ENV !== 'development' &&
+		topic &&
+		!process.env.IN_QUEUE
+	) {
 		const messageId = await topic.publishMessage({
 			json: {
 				update: ctx.update,
@@ -195,7 +209,7 @@ bot.on(['message:text', 'message:voice'], async (ctx) => {
 		})
 		console.log(`Message ${messageId} published.`)
 		return
-	} */
+	}
 
 	await mainLogic(ctx)
 })
