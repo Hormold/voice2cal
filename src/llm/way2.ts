@@ -111,6 +111,12 @@ const model2 = new ChatOpenAI({
 	verbose: true,
 	configuration: {
 		apiKey: process.env.OPENAI_API_KEY!,
+		basePath: 'https://oai.hconeai.com/v1',
+		baseOptions: {
+			headers: {
+				'Helicone-Auth': 'Bearer sk-toktqda-kvne4qy-t2lfhui-yrxmpca',
+			},
+		},
 	},
 })
 

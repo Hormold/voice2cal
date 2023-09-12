@@ -3,7 +3,7 @@ import { Buffer } from 'node:buffer'
 import express from 'express'
 import functions from '@google-cloud/functions-framework'
 import { webhookCallback } from 'grammy'
-import { type PubSubEvent, type Payload } from './types.js'
+import { type PubSubEvent, type Payload, type GoogleUserinfo } from './types.js'
 import {
 	getAccessToken,
 	getGoogleId,
@@ -38,7 +38,7 @@ app.get('/google/callback', async (request, response) => {
 		if (!accessToken.access_token) throw new Error('Invalid access token')
 		// Get user id using API
 
-		const userInfo = await getGoogleId(accessToken.access_token)
+		const userInfo: GoogleUserinfo = await getGoogleId(accessToken.access_token)
 		if (!userInfo.id) throw new Error('Invalid user id')
 
 		const settings = await user.get()
@@ -62,13 +62,13 @@ app.get('/google/callback', async (request, response) => {
 
 		const isHaveAccess = await Promise.all([
 			await checkGoogleAccess(accessToken.access_token, 'calendar'),
-			await checkGoogleAccess(accessToken.access_token, 'contacts'),
+			// Not needed: await checkGoogleAccess(accessToken.access_token, 'contacts'),
 		])
 
 		if (isHaveAccess.some((access) => !access)) {
 			await bot.api.sendMessage(
 				userId,
-				`👋🏼 You are logged in as ${userInfo.name}, but you need to give access to Google Calendar and Contacts to use all features of this bot.`,
+				`👋🏼 You are logged in as ${userInfo.name}, but you need to give access to Google Calendar to use all features of this bot.\n\nPlease login again and check "Calendar" checkboxe on the login screen: /login`,
 			)
 		} else {
 			await bot.api.sendMessage(

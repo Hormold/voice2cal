@@ -67,6 +67,14 @@ const runWay1 = async (
 	const llm = new ChatOpenAI({
 		modelName,
 		temperature: 0,
+		configuration: {
+			basePath: 'https://oai.hconeai.com/v1',
+			baseOptions: {
+				headers: {
+					'Helicone-Auth': 'Bearer sk-toktqda-kvne4qy-t2lfhui-yrxmpca',
+				},
+			},
+		},
 	})
 
 	const functionCallingModel = llm.bind({

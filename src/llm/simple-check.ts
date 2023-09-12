@@ -18,6 +18,14 @@ const zodSchema = z.object({
 const llm = new ChatOpenAI({
 	modelName: 'gpt-3.5-turbo-0613',
 	temperature: 0,
+	configuration: {
+		basePath: 'https://oai.hconeai.com/v1',
+		baseOptions: {
+			headers: {
+				'Helicone-Auth': 'Bearer sk-toktqda-kvne4qy-t2lfhui-yrxmpca',
+			},
+		},
+	},
 })
 
 const infoPrompt = new ChatPromptTemplate({
