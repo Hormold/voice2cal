@@ -106,7 +106,7 @@ const mainLogic = async (ctx: MyContext) => {
 	await redisClient.setex(redisKey, 60 * 5, 'ok') // 5 minutes cache
 
 	const message = await ctx.reply(
-		`Processing started, it can take up to few minutes.\nText: ${messageText}`,
+		`Processing started, but it can take up to few minutes.\nText: ${messageText}`,
 	)
 	const messageId = message.message_id
 
@@ -151,7 +151,7 @@ const mainLogic = async (ctx: MyContext) => {
 				await ctx.api.editMessageText(
 					ctx.chat.id,
 					messageId,
-					`Error: Event start or end time not set`,
+					`Error: Event start or end time not set. Looks like GPT model failed to extract data from your message. Please try again!`,
 				)
 				return
 			}
@@ -161,7 +161,7 @@ const mainLogic = async (ctx: MyContext) => {
 			await ctx.api.editMessageText(
 				ctx.chat.id,
 				messageId,
-				`${previewString}\n\nEvent will be added to your calendar «${userSettings.calendarName}» in 15 seconds`,
+				`${previewString}\n\nThis event will be added to your calendar «${userSettings.calendarName}» in 15 seconds`,
 				{
 					reply_markup: {
 						inline_keyboard: [
@@ -203,7 +203,7 @@ const mainLogic = async (ctx: MyContext) => {
 				await ctx.api.editMessageText(
 					ctx.chat.id,
 					messageId,
-					`Great news! Event added to your calendar: «${userSettings.calendarName}»\n${previewString}`,
+					`Good news, everyone! Event has been added to your calendar «${userSettings.calendarName}».\n\n${previewString}`,
 					{
 						reply_markup: {
 							inline_keyboard: [
@@ -227,10 +227,13 @@ const mainLogic = async (ctx: MyContext) => {
 		)
 
 		if (process.env.ADMIN_ID) {
-			await ctx.api.sendMessage(process.env.ADMIN_ID, `Error: ${error.message}`)
+			await ctx.api.sendMessage(
+				process.env.ADMIN_ID,
+				`Request from chat #${ctx.chat.id} | error: ${error.message}`,
+			)
 		}
 
-		console.log(`Error: ${error.message}`)
+		console.log(`Error: ${error.message}`, error)
 	}
 }
 

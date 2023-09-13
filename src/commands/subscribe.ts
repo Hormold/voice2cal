@@ -34,9 +34,14 @@ const subscribeCommand = async (ctx: CommandContext<MyContext>) => {
 	for (const plan of userPlans) {
 		rows.push(
 			`📊 ${plan.name} (${plan.price} USD)`,
-			`📊 ${plan.messagesPerMonth} messages per 30 days`,
-			`📊 ${plan.fastMode ? '✅ GPT-4 Included' : '❌ No GPT-4 Mode'}`,
-			`📊 ${plan.voiceMessages ? '✅ Voice messages' : '❌ No voice messages'}`,
+			`💬 ${plan.messagesPerMonth} messages per 30 days`,
+			`🧠 ${plan.fastMode ? '✅ GPT-4 Included' : '❌ No GPT-4 Mode'}`,
+			`🔊 ${plan.voiceMessages ? '✅ Voice messages' : '❌ No voice messages'}`,
+			`📖 ${
+				plan.customInstructions
+					? '✅ Custom instructions'
+					: '❌ No custom instructions'
+			}`,
 			'',
 		)
 	}
@@ -64,7 +69,7 @@ const subscribeCallback = async (ctx: CallbackQueryContext<MyContext>) => {
 
 	if (plan.id < userSettings.planId) {
 		return ctx.editMessageText(
-			`You can't downgrade your plan, it be downgraded automatically after current plan expires`,
+			`You can't downgrade your plan, it be downgraded automatically after current plan expires. Cancel it in Stripe if you want to downgrade in future.`,
 		)
 	}
 

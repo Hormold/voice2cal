@@ -7,11 +7,12 @@ export const isDev = process.env.NODE_ENV === 'development'
 export const commands = {
 	login: '👤 Login to Google Account',
 	calendars: '📅 Select calendar',
-	reset: '🔧 Reset Google Account',
 	mode: '🔧 Select mode (GPT-3.5 or GPT-4)',
-	subscribe: '🔧 Subscribe to PRO plans',
+	subscribe: '🔔 Subscribe to PRO plans',
 	events: '📅 Show 20 upcoming events',
-	data: '🔧 Edit custom instructions',
+	data: '⚙️ Edit custom instructions',
+	privacy: '🔐 How we work with your data',
+	reset: '🔧 Reset Google Account',
 }
 
 export const userPlans = [
@@ -22,6 +23,7 @@ export const userPlans = [
 		period: 1000 * 60 * 60 * 24 * 30,
 		fastMode: false,
 		messagesPerMonth: 30,
+		customInstructions: false,
 		voiceMessages: false,
 	},
 	{
@@ -32,6 +34,7 @@ export const userPlans = [
 		fastMode: false,
 		messagesPerMonth: 100,
 		voiceMessages: true,
+		customInstructions: false,
 		stripePlanId: isDev
 			? 'price_1NmnVYFWIUVIqUXgnf82QMTV'
 			: 'price_1NmiOeFWIUVIqUXgYpGowpp3',
@@ -44,6 +47,7 @@ export const userPlans = [
 		fastMode: true,
 		messagesPerMonth: 500,
 		voiceMessages: true,
+		customInstructions: true,
 		stripePlanId: isDev
 			? 'price_1NmnWKFWIUVIqUXgbfhdLcqm'
 			: 'price_1NmiYzFWIUVIqUXgWc2fzx37',

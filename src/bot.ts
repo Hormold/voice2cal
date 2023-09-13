@@ -21,6 +21,7 @@ import { calendarsCallback, calendarsCommand } from './commands/calendars.js'
 import loginCommand from './commands/login.js'
 import eventsCommand from './commands/events.js'
 import helpCommand from './commands/help.js'
+import privacyCommand from './commands/privacy.js'
 import {
 	dataCommand,
 	dataConversation,
@@ -113,6 +114,7 @@ bot.command('reset', resetCommand)
 bot.command('calendars', calendarsCommand)
 bot.command('login', loginCommand)
 bot.command('data', dataCommand)
+bot.command('privacy', privacyCommand)
 bot.callbackQuery(/calendar:(.+)/, calendarsCallback)
 bot.callbackQuery(/mode:(.+)/, modeCallback)
 bot.callbackQuery(/plan:(.+)/, subscribeCallback)

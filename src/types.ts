@@ -86,6 +86,7 @@ export type Plan = {
 	fastMode: boolean;
 	messagesPerMonth: number;
 	voiceMessages: boolean;
+	customInstructions: boolean;
 	stripePlanId: string;
 }
 

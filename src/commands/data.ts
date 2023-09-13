@@ -24,6 +24,17 @@ const MainButtons = {
 }
 
 const dataCommand = async (ctx: CommandContext<MyContext>) => {
+	const user = new User(ctx.from!)
+	await user.get()
+
+	if (!user.getUserPlan().customInstructions) {
+		await ctx.reply(
+			`You can set your instructions here to learn AI better undestrand you.\n\nSorry, this feature is available only for Ultra users`,
+		)
+		await ctx.conversation.exit()
+		return
+	}
+
 	await ctx.conversation.enter('data-conversation')
 }
 
@@ -45,7 +56,6 @@ const dataResetPrompt = async (ctx: CallbackQueryContext<MyContext>) => {
 async function dataConversation(conversation: MyConversation, ctx: MyContext) {
 	const user = new User(ctx.from!)
 	const userSettings = await user.get()
-
 	if (userSettings.customInstructions) {
 		await ctx.reply(
 			`To edit current instruction, copy it, edit and send it back to me.\n\nYour current instructions:\n${userSettings.customInstructions}`,
