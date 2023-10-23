@@ -103,4 +103,16 @@ export type Payload = {
 	update: Update
 }
 
+export type mainEnv = {
+	openAiKey: string,
+	stripeKey: string,
+	hkKey: string,
+	googleProjectId: string,
+	botKey: string,
+	botName: string,
+	nodeEnv: string,
+	geoKey: string,
+	adminId: string,
+}
+
 export type GrammyUpdate = Update

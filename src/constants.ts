@@ -1,6 +1,6 @@
 import process from 'node:process'
 import { z } from 'zod'
-import { type Plan } from './types.js'
+import { type Plan, type mainEnv } from './types.js'
 
 export const isDev = process.env.NODE_ENV === 'development'
 
@@ -132,3 +132,15 @@ export const contactsSchema = z.object({
 			`Variants of the name of the contact to search for in user language and english`,
 		),
 })
+
+export const env: mainEnv = {
+	openAiKey: process.env.OPENAI_API_KEY ?? '',
+	stripeKey: process.env.STRIPE_KEY ?? '',
+	hkKey: process.env.HK_KEY ?? '',
+	googleProjectId: process.env.GOOGLE_CLOUD_PROJECT_ID ?? '',
+	botKey: process.env.BOT_TOKEN ?? '',
+	botName: process.env.BOT_NAME ?? '',
+	nodeEnv: process.env.NODE_ENV ?? 'development',
+	geoKey: process.env.GEOAPIFY_API_KEY ?? '',
+	adminId: process.env.ADMIN_ID ?? '',
+}

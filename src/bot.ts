@@ -29,11 +29,13 @@ import {
 	dataResetPrompt,
 } from './commands/data.js'
 import mainLogic from './logic.js'
+import { env } from './constants.js'
 
 let topic: Topic | undefined
-if (process.env.NODE_ENV !== 'development') {
+
+if (env.nodeEnv !== 'development') {
 	const pubsub = new PubSub({
-		projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
+		projectId: env.googleProjectId,
 	})
 	topic = pubsub.topic('openai-requests', {
 		gaxOpts: {
@@ -43,13 +45,15 @@ if (process.env.NODE_ENV !== 'development') {
 	})
 }
 
-if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY not set')
-const bot = new Bot<MyContext>(process.env.BOT_TOKEN!, {
+if (!env.openAiKey || !env.botKey)
+	throw new Error('OpenAI key not found or bot key not found') // Critical error
+
+const bot = new Bot<MyContext>(env.botKey, {
 	botInfo: {
 		is_bot: true,
 		id: 6_444_456_460,
-		username: String(process.env.BOT_NAME!),
-		first_name: String(process.env.BOT_NAME!),
+		username: env.botName,
+		first_name: env.botName,
 		can_join_groups: true,
 		can_read_all_group_messages: false,
 		supports_inline_queries: false,
@@ -96,9 +100,9 @@ bot.use(async (ctx, next) => {
 })
 
 bot.catch(async (error) => {
-	if (process.env.ADMIN_ID) {
+	if (env.adminId) {
 		await bot.api.sendMessage(
-			process.env.ADMIN_ID,
+			Number(env.adminId),
 			`Global error: ${error.message}`,
 		)
 	}
@@ -169,7 +173,7 @@ bot.on('message:location', async (ctx) => {
 		const { latitude, longitude } = ctx.message.location
 		// Convert location to city name, timezone
 		const result = await fetch(
-			`https://api.geoapify.com/v1/geocode/reverse?lat=${latitude}&lon=${longitude}&apiKey=${process.env.GEOAPIFY_API_KEY}`,
+			`https://api.geoapify.com/v1/geocode/reverse?lat=${latitude}&lon=${longitude}&apiKey=${env.geoKey}`,
 		)
 		const geoData = (await result.json()) as GeoData
 		const data = geoData.features[0].properties
@@ -199,17 +203,12 @@ bot.on('message:location', async (ctx) => {
 })
 
 bot.on(['message:text', 'message:voice'], async (ctx) => {
-	if (
-		process.env.NODE_ENV !== 'development' &&
-		topic &&
-		!process.env.IN_QUEUE
-	) {
-		const messageId = await topic.publishMessage({
+	if (env.nodeEnv !== 'development' && topic && !process.env.IN_QUEUE) {
+		await topic.publishMessage({
 			json: {
 				update: ctx.update,
 			},
 		})
-		console.log(`Message ${messageId} published.`)
 		return
 	}
 

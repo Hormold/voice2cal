@@ -2,7 +2,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable complexity */
 import type { ReadStream } from 'node:fs'
-import process from 'node:process'
 import got from 'got'
 import { type MyContext, type CalendarEvent } from './types.js'
 import { simpleCheckIsEvent } from './llm/simple-check.js'
@@ -13,6 +12,7 @@ import getOpenAiClient from './utils/openai.js'
 import User from './utils/user-manager.js'
 import { buildPreviewString, md5 } from './utils/functions.js'
 import redisClient from './utils/redis.js'
+import { env } from './constants.js'
 
 const mainLogic = async (ctx: MyContext) => {
 	const user = new User(ctx.from!)
@@ -66,7 +66,7 @@ const mainLogic = async (ctx: MyContext) => {
 
 		try {
 			const file = await ctx.getFile()
-			const fileUrl = `https://api.telegram.org/file/bot${process.env.BOT_TOKEN}/${file.file_path}`
+			const fileUrl = `https://api.telegram.org/file/bot${env.botKey}/${file.file_path}`
 			const stream = got.stream(fileUrl) as unknown as ReadStream
 
 			stream.path = 'voice.ogg'
@@ -94,14 +94,10 @@ const mainLogic = async (ctx: MyContext) => {
 		return
 	}
 
-	if (process.env.NODE_ENV === 'production') {
-		console.log(`Message: ${messageText}`)
-		if (!(await simpleCheckIsEvent(messageText))) {
-			return ctx.reply(
-				`Sorry, this message doesn't look like event, please try again!`,
-			)
-		}
-	}
+	if (env.nodeEnv === 'production' && !(await simpleCheckIsEvent(messageText)))
+		return ctx.reply(
+			`Sorry, this message doesn't look like event, please try again!`,
+		)
 
 	await redisClient.setex(redisKey, 60 * 5, 'ok') // 5 minutes cache
 
@@ -226,9 +222,9 @@ const mainLogic = async (ctx: MyContext) => {
 			`Sorry, something went wrong! Contact @define to get help`,
 		)
 
-		if (process.env.ADMIN_ID) {
+		if (env.adminId) {
 			await ctx.api.sendMessage(
-				process.env.ADMIN_ID,
+				Number(env.adminId),
 				`Request from chat #${ctx.chat.id} | error: ${error.message}`,
 			)
 		}

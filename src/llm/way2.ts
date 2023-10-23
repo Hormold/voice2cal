@@ -3,7 +3,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable n/file-extension-in-import */
 import process from 'node:process'
-import { zodToJsonSchema } from 'zod-to-json-schema'
 import { Calculator } from 'langchain/tools/calculator'
 import {
 	BingSerpAPI,
@@ -14,7 +13,7 @@ import { ChatOpenAI } from 'langchain/chat_models/openai'
 import { PromptTemplate } from 'langchain/prompts'
 import { initializeAgentExecutorWithOptions } from 'langchain/agents'
 import { type runFormat, type UserSettings } from '../types.js'
-import { zodSchema, contactsSchema } from '../constants.js'
+import { zodSchema, contactsSchema, env } from '../constants.js'
 import { currentDT } from '../utils/functions.js'
 import { getContacts, getCalendarEvents } from '../utils/google.js'
 
@@ -110,11 +109,11 @@ const model2 = new ChatOpenAI({
 	modelName: 'gpt-4',
 	verbose: true,
 	configuration: {
-		apiKey: process.env.OPENAI_API_KEY!,
+		apiKey: env.openAiKey,
 		basePath: 'https://oai.hconeai.com/v1',
 		baseOptions: {
 			headers: {
-				'Helicone-Auth': 'Bearer sk-toktqda-kvne4qy-t2lfhui-yrxmpca',
+				'Helicone-Auth': env.hkKey,
 			},
 		},
 	},

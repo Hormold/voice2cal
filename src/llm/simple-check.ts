@@ -9,6 +9,7 @@ import {
 	HumanMessagePromptTemplate,
 } from 'langchain/prompts'
 import { JsonOutputFunctionsParser } from 'langchain/output_parsers'
+import { env } from '../constants.js'
 
 const zodSchema = z.object({
 	isEvent: z.boolean(),
@@ -22,7 +23,7 @@ const llm = new ChatOpenAI({
 		basePath: 'https://oai.hconeai.com/v1',
 		baseOptions: {
 			headers: {
-				'Helicone-Auth': 'Bearer sk-toktqda-kvne4qy-t2lfhui-yrxmpca',
+				'Helicone-Auth': env.hkKey,
 			},
 		},
 	},
