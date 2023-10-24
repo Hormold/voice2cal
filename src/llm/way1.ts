@@ -9,7 +9,7 @@ import {
 } from 'langchain/prompts'
 import { JsonOutputFunctionsParser } from 'langchain/output_parsers'
 import { type runFormat } from '../types.js'
-import { zodSchema, env } from '../constants.js'
+import { zodSchema, langchainConfig } from '../constants.js'
 import { currentDT } from '../utils/functions.js'
 
 const prompt = new ChatPromptTemplate({
@@ -67,14 +67,7 @@ const runWay1 = async (
 	const llm = new ChatOpenAI({
 		modelName,
 		temperature: 0,
-		configuration: {
-			basePath: 'https://oai.hconeai.com/v1',
-			baseOptions: {
-				headers: {
-					'Helicone-Auth': env.hkKey,
-				},
-			},
-		},
+		...langchainConfig,
 	})
 
 	const functionCallingModel = llm.bind({

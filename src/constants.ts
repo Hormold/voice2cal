@@ -144,3 +144,19 @@ export const env: mainEnv = {
 	geoKey: process.env.GEOAPIFY_API_KEY ?? '',
 	adminId: process.env.ADMIN_ID ?? '',
 }
+
+// Config here to manage all requests via langchain
+// Now we have an access to LangSmith, so we don't need to use helicone anymore
+export const langchainConfig = {
+	/*
+	Disabled:
+	configuration: {
+		basePath: 'https://oai.hconeai.com/v1',
+		baseOptions: {
+			headers: {
+				'Helicone-Auth': env.hkKey,
+			},
+		},
+	},
+	*/
+}

@@ -13,7 +13,7 @@ import { ChatOpenAI } from 'langchain/chat_models/openai'
 import { PromptTemplate } from 'langchain/prompts'
 import { initializeAgentExecutorWithOptions } from 'langchain/agents'
 import { type runFormat, type UserSettings } from '../types.js'
-import { zodSchema, contactsSchema, env } from '../constants.js'
+import { zodSchema, contactsSchema, langchainConfig } from '../constants.js'
 import { currentDT } from '../utils/functions.js'
 import { getContacts, getCalendarEvents } from '../utils/google.js'
 
@@ -108,15 +108,7 @@ const model2 = new ChatOpenAI({
 	temperature: 0,
 	modelName: 'gpt-4',
 	verbose: true,
-	configuration: {
-		apiKey: env.openAiKey,
-		basePath: 'https://oai.hconeai.com/v1',
-		baseOptions: {
-			headers: {
-				'Helicone-Auth': env.hkKey,
-			},
-		},
-	},
+	...langchainConfig,
 })
 
 const promptTemplate =

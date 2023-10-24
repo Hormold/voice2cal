@@ -9,7 +9,7 @@ import {
 	HumanMessagePromptTemplate,
 } from 'langchain/prompts'
 import { JsonOutputFunctionsParser } from 'langchain/output_parsers'
-import { env } from '../constants.js'
+import { langchainConfig } from '../constants.js'
 
 const zodSchema = z.object({
 	isEvent: z.boolean(),
@@ -19,14 +19,7 @@ const zodSchema = z.object({
 const llm = new ChatOpenAI({
 	modelName: 'gpt-3.5-turbo-0613',
 	temperature: 0,
-	configuration: {
-		basePath: 'https://oai.hconeai.com/v1',
-		baseOptions: {
-			headers: {
-				'Helicone-Auth': env.hkKey,
-			},
-		},
-	},
+	...langchainConfig,
 })
 
 const infoPrompt = new ChatPromptTemplate({
